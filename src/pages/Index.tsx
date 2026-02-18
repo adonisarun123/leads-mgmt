@@ -10,8 +10,13 @@ import LeadTable from "@/components/LeadTable";
 import KpiCards from "@/components/KpiCards";
 import SummaryDashboard from "@/components/SummaryDashboard";
 import UserApprovalPanel from "@/components/UserApprovalPanel";
+import ActivityLogPanel from "@/components/ActivityLogPanel";
+import CsvImport from "@/components/CsvImport";
+import ExportReport from "@/components/ExportReport";
+import NotificationBell from "@/components/NotificationBell";
+import { logActivity } from "@/lib/activity-logger";
 import type { NewPlacement, Replacement } from "@/types/leads";
-import { LogOut, ShieldAlert, LayoutDashboard, ClipboardList, RefreshCcw, Users } from "lucide-react";
+import { LogOut, ShieldAlert, LayoutDashboard, ClipboardList, RefreshCcw, Users, Activity } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -26,7 +31,12 @@ const Index = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (!session?.user) navigate("/auth");
-      else fetchRoleAndApproval(session.user.id);
+      else {
+        fetchRoleAndApproval(session.user.id);
+        if (_event === "SIGNED_IN") {
+          logActivity({ action: "login", entityType: "auth" });
+        }
+      }
     });
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -72,6 +82,7 @@ const Index = () => {
     setLoading(false);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Success", description: "New placement lead added successfully" });
+    await logActivity({ action: "create", entityType: "new_placements", details: formData });
     fetchPlacements();
   };
 
@@ -81,6 +92,7 @@ const Index = () => {
     setLoading(false);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Success", description: "Replacement lead added successfully" });
+    await logActivity({ action: "create", entityType: "replacements", details: formData });
     fetchReplacements();
   };
 
@@ -88,6 +100,7 @@ const Index = () => {
     const { error } = await supabase.from("new_placements").update({ [field]: value }).eq("id", id);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Updated", description: `${field.replace("_", " ")} updated successfully` });
+    await logActivity({ action: "update", entityType: "new_placements", entityId: id, details: { field, value } });
     fetchPlacements();
   };
 
@@ -95,10 +108,12 @@ const Index = () => {
     const { error } = await supabase.from("replacements").update({ [field]: value }).eq("id", id);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Updated", description: `${field.replace("_", " ")} updated successfully` });
+    await logActivity({ action: "update", entityType: "replacements", entityId: id, details: { field, value } });
     fetchReplacements();
   };
 
   const handleLogout = async () => {
+    await logActivity({ action: "logout", entityType: "auth" });
     await supabase.auth.signOut();
     navigate("/auth");
   };
@@ -140,6 +155,8 @@ const Index = () => {
             <h1 className="text-sm font-bold text-foreground hidden sm:block">EzyHelpers Ops</h1>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2.5">
+            <ExportReport placements={placements} replacements={replacements} />
+            <NotificationBell />
             <Badge variant="secondary" className="text-[10px] font-semibold px-2 py-0.5 rounded-full">{roleLabel}</Badge>
             <span className="text-[11px] text-muted-foreground hidden md:inline truncate max-w-[160px]">{user.email}</span>
             <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-1 text-xs h-7 sm:h-8 rounded-lg px-2">
@@ -166,10 +183,16 @@ const Index = () => {
               <span className="hidden sm:inline">Replacements</span>
             </TabsTrigger>
             {isAdmin && (
-              <TabsTrigger value="users" className="gap-1 rounded-lg text-[11px] sm:text-xs data-[state=active]:shadow-sm px-2.5 sm:px-3">
-                <Users className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Users</span>
-              </TabsTrigger>
+              <>
+                <TabsTrigger value="users" className="gap-1 rounded-lg text-[11px] sm:text-xs data-[state=active]:shadow-sm px-2.5 sm:px-3">
+                  <Users className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Users</span>
+                </TabsTrigger>
+                <TabsTrigger value="logs" className="gap-1 rounded-lg text-[11px] sm:text-xs data-[state=active]:shadow-sm px-2.5 sm:px-3">
+                  <Activity className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Logs</span>
+                </TabsTrigger>
+              </>
             )}
           </TabsList>
 
@@ -179,7 +202,10 @@ const Index = () => {
 
           <TabsContent value="placements">
             <KpiCards data={placements} label="Placements" />
-            <LeadForm onSubmit={addPlacement} loading={loading} />
+            <div className="flex items-center justify-between mb-3">
+              <LeadForm onSubmit={addPlacement} loading={loading} />
+              <CsvImport userId={user.id} onSuccess={fetchPlacements} />
+            </div>
             <LeadTable data={placements} onUpdate={updatePlacement} userRole={userRole} />
           </TabsContent>
 
@@ -190,10 +216,16 @@ const Index = () => {
           </TabsContent>
 
           {isAdmin && (
-            <TabsContent value="users">
-              <h2 className="text-lg font-bold mb-4">User Approval & Role Management</h2>
-              <UserApprovalPanel />
-            </TabsContent>
+            <>
+              <TabsContent value="users">
+                <h2 className="text-lg font-bold mb-4">User Approval & Role Management</h2>
+                <UserApprovalPanel />
+              </TabsContent>
+              <TabsContent value="logs">
+                <h2 className="text-lg font-bold mb-4">Activity Logs</h2>
+                <ActivityLogPanel />
+              </TabsContent>
+            </>
           )}
         </Tabs>
       </main>
