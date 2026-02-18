@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format, differenceInDays } from "date-fns";
-import { Download, ArrowRightLeft } from "lucide-react";
+import { Download, ArrowRightLeft, Filter, X } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import PriorityBadge from "./PriorityBadge";
 import AgeBadge from "./AgeBadge";
 import ConfirmDialog from "./ConfirmDialog";
@@ -20,11 +21,29 @@ interface LeadTableProps {
   userRole?: string;
 }
 
+const ALL = "__all__";
+
 const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, userRole }: LeadTableProps) => {
   const [confirm, setConfirm] = useState<{ id: string; field: string; value: string; label: string } | null>(null);
   const [editingAssign, setEditingAssign] = useState<{ id: string; value: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkTransfer, setBulkTransfer] = useState<{ ids: string[]; value: string } | null>(null);
+
+  // Filters
+  const [filterStatus, setFilterStatus] = useState(ALL);
+  const [filterPriority, setFilterPriority] = useState(ALL);
+  const [filterSalesPerson, setFilterSalesPerson] = useState(ALL);
+
+  const hasFilters = filterStatus !== ALL || filterPriority !== ALL || filterSalesPerson !== ALL;
+
+  const filteredData = useMemo(() => {
+    return data.filter((row) => {
+      if (filterStatus !== ALL && row.lead_status !== filterStatus) return false;
+      if (filterPriority !== ALL && row.lead_priority !== filterPriority) return false;
+      if (filterSalesPerson !== ALL && row.sales_person !== filterSalesPerson) return false;
+      return true;
+    });
+  }, [data, filterStatus, filterPriority, filterSalesPerson]);
 
   const canEdit = userRole === "admin" || userRole === "manager";
 
@@ -42,10 +61,10 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, userRo
   };
 
   const toggleAll = () => {
-    if (selectedIds.size === data.length) {
+    if (selectedIds.size === filteredData.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(data.map((r) => r.id)));
+      setSelectedIds(new Set(filteredData.map((r) => r.id)));
     }
   };
 
@@ -65,14 +84,29 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, userRo
     setBulkTransfer(null);
   };
 
-  const exportCSV = () => {
-    if (data.length === 0) return;
+  const clearFilters = () => {
+    setFilterStatus(ALL);
+    setFilterPriority(ALL);
+    setFilterSalesPerson(ALL);
+  };
+
+  const exportCSV = (scope: "all" | "filtered" | "selected") => {
+    let exportData: (NewPlacement | Replacement)[];
+    if (scope === "selected" && selectedIds.size > 0) {
+      exportData = filteredData.filter((r) => selectedIds.has(r.id));
+    } else if (scope === "filtered") {
+      exportData = filteredData;
+    } else {
+      exportData = data;
+    }
+    if (exportData.length === 0) return;
+
     const headers = [
       "Lead-in Date", "Age (days)", "Area", "Apartment", "Job Type", "Tasks", "Language", "Salary",
       "Priority", "Status", "Sales Person",
       ...(isReplacement ? ["Assign To"] : []),
     ];
-    const rows = data.map((row) => [
+    const rows = exportData.map((row) => [
       format(new Date(row.lead_in_date), "dd/MM/yyyy"),
       String(differenceInDays(new Date(), new Date(row.lead_in_date))),
       row.area, row.apartment, row.job_type,
@@ -85,15 +119,52 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, userRo
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${isReplacement ? "replacements" : "new_placements"}_${format(new Date(), "yyyyMMdd")}.csv`;
+    a.download = `${isReplacement ? "replacements" : "new_placements"}_${scope}_${format(new Date(), "yyyyMMdd")}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   return (
     <>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        {/* Bulk action bar */}
+      {/* Filter bar */}
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3">
+        <Filter className="h-4 w-4 text-muted-foreground" />
+        <span className="text-xs font-medium text-muted-foreground mr-1">Filters:</span>
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="h-8 w-32 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>All Statuses</SelectItem>
+            {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterPriority} onValueChange={setFilterPriority}>
+          <SelectTrigger className="h-8 w-32 text-xs"><SelectValue placeholder="Priority" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>All Priorities</SelectItem>
+            {PRIORITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterSalesPerson} onValueChange={setFilterSalesPerson}>
+          <SelectTrigger className="h-8 w-32 text-xs"><SelectValue placeholder="Sales Person" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>All Sales Persons</SelectItem>
+            {SALES_PERSONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {hasFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-xs">
+            <X className="h-3 w-3" /> Clear
+          </Button>
+        )}
+        {hasFilters && (
+          <Badge variant="secondary" className="text-xs ml-1">
+            {filteredData.length} of {data.length} shown
+          </Badge>
+        )}
+      </div>
+
+      {/* Action bar */}
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         {canEdit && selectedIds.size > 0 && (
           <div className="flex items-center gap-2 rounded-md border bg-muted px-3 py-1.5">
             <ArrowRightLeft className="h-4 w-4 text-muted-foreground" />
@@ -107,20 +178,32 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, userRo
             <Button variant="ghost" size="sm" className="text-xs" onClick={() => setSelectedIds(new Set())}>Clear</Button>
           </div>
         )}
-        <div className="ml-auto">
-          <Button variant="outline" size="sm" onClick={exportCSV} disabled={data.length === 0} className="gap-2">
-            <Download className="h-4 w-4" /> Export CSV
+        <div className="ml-auto flex items-center gap-2">
+          {selectedIds.size > 0 && (
+            <Button variant="outline" size="sm" onClick={() => exportCSV("selected")} className="gap-2 text-xs">
+              <Download className="h-4 w-4" /> Export Selected ({selectedIds.size})
+            </Button>
+          )}
+          {hasFilters && (
+            <Button variant="outline" size="sm" onClick={() => exportCSV("filtered")} className="gap-2 text-xs">
+              <Download className="h-4 w-4" /> Export Filtered ({filteredData.length})
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => exportCSV("all")} disabled={data.length === 0} className="gap-2 text-xs">
+            <Download className="h-4 w-4" /> Export All
           </Button>
         </div>
       </div>
+
+      {/* Table */}
       <div className="rounded-lg border">
         <Table>
-          <TableHeader className="sticky top-0 bg-muted">
+          <TableHeader className="sticky top-0 bg-muted z-10">
             <TableRow>
               {canEdit && (
                 <TableHead className="w-10">
                   <Checkbox
-                    checked={data.length > 0 && selectedIds.size === data.length}
+                    checked={filteredData.length > 0 && selectedIds.size === filteredData.length}
                     onCheckedChange={toggleAll}
                     aria-label="Select all"
                   />
@@ -141,14 +224,14 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, userRo
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.length === 0 && (
+            {filteredData.length === 0 && (
               <TableRow>
                 <TableCell colSpan={(isReplacement ? 12 : 11) + (canEdit ? 1 : 0)} className="text-center text-muted-foreground py-8">
-                  No leads yet. Add one above.
+                  {data.length === 0 ? "No leads yet. Add one above." : "No leads match the current filters."}
                 </TableCell>
               </TableRow>
             )}
-            {data.map((row) => (
+            {filteredData.map((row) => (
               <TableRow key={row.id} className={`hover:bg-muted/50 ${selectedIds.has(row.id) ? "bg-accent/30" : ""}`}>
                 {canEdit && (
                   <TableCell>
@@ -253,7 +336,6 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, userRo
         </Table>
       </div>
 
-      {/* Single row confirm */}
       <ConfirmDialog
         open={!!confirm}
         title="Confirm Change"
@@ -265,7 +347,6 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, userRo
         onCancel={() => setConfirm(null)}
       />
 
-      {/* Bulk transfer confirm */}
       <ConfirmDialog
         open={!!bulkTransfer}
         title="Confirm Bulk Transfer"
