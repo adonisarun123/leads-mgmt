@@ -7,13 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import LeadForm from "@/components/LeadForm";
 import LeadTable from "@/components/LeadTable";
+import UserApprovalPanel from "@/components/UserApprovalPanel";
 import type { NewPlacement, Replacement } from "@/types/leads";
-import { LogOut } from "lucide-react";
+import { LogOut, ShieldAlert } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string>("");
+  const [approved, setApproved] = useState<boolean | null>(null);
   const [placements, setPlacements] = useState<NewPlacement[]>([]);
   const [replacements, setReplacements] = useState<Replacement[]>([]);
   const [loading, setLoading] = useState(false);
@@ -22,27 +24,33 @@ const Index = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (!session?.user) navigate("/auth");
-      else fetchRole(session.user.id);
+      else fetchRoleAndApproval(session.user.id);
     });
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (!session?.user) navigate("/auth");
-      else fetchRole(session.user.id);
+      else fetchRoleAndApproval(session.user.id);
     });
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const fetchRole = async (userId: string) => {
-    const { data } = await supabase.rpc("get_user_role", { _user_id: userId });
-    setUserRole((data as string) || "staff");
+  const fetchRoleAndApproval = async (userId: string) => {
+    const { data } = await supabase.from("user_roles").select("role, approved").eq("user_id", userId).maybeSingle();
+    if (data) {
+      setUserRole(data.role || "staff");
+      setApproved(data.approved ?? false);
+    } else {
+      setUserRole("staff");
+      setApproved(false);
+    }
   };
 
   useEffect(() => {
-    if (user) {
+    if (user && approved) {
       fetchPlacements();
       fetchReplacements();
     }
-  }, [user]);
+  }, [user, approved]);
 
   const fetchPlacements = async () => {
     const { data, error } = await supabase.from("new_placements").select("*").order("created_at", { ascending: false });
@@ -95,7 +103,28 @@ const Index = () => {
 
   if (!user) return null;
 
+  // Pending approval screen
+  if (approved === false) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-muted">
+        <div className="w-full max-w-sm rounded-lg border bg-card p-6 shadow-sm text-center">
+          <ShieldAlert className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
+          <h1 className="text-lg font-semibold text-card-foreground mb-1">Approval Pending</h1>
+          <p className="text-sm text-muted-foreground mb-4">
+            Your account is awaiting admin approval. Please contact <strong>suraj@ezyhelpers.com</strong> to get approved.
+          </p>
+          <Button variant="outline" onClick={handleLogout} className="gap-2">
+            <LogOut className="h-4 w-4" /> Sign Out
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (approved === null) return null; // still loading
+
   const roleLabel = userRole.charAt(0).toUpperCase() + userRole.slice(1);
+  const isAdmin = userRole === "admin";
 
   return (
     <div className="min-h-screen bg-background">
@@ -115,6 +144,7 @@ const Index = () => {
           <TabsList className="mb-4">
             <TabsTrigger value="placements">New Placements</TabsTrigger>
             <TabsTrigger value="replacements">Replacements</TabsTrigger>
+            {isAdmin && <TabsTrigger value="users">User Management</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="placements">
@@ -126,6 +156,13 @@ const Index = () => {
             <LeadForm isReplacement onSubmit={addReplacement} loading={loading} />
             <LeadTable data={replacements} isReplacement onUpdate={updateReplacement} userRole={userRole} />
           </TabsContent>
+
+          {isAdmin && (
+            <TabsContent value="users">
+              <h2 className="text-lg font-semibold mb-3">User Approval & Role Management</h2>
+              <UserApprovalPanel />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
     </div>
