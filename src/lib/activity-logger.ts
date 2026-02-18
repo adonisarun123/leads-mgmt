@@ -19,7 +19,6 @@ export const logActivity = async ({ action, entityType, entityId, details }: Log
 
     await supabase.from("activity_logs").insert([{
       user_id: session.user.id,
-      user_email: session.user.email ?? null,
       action,
       entity_type: entityType,
       entity_id: entityId ?? null,

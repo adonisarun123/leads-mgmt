@@ -10,7 +10,6 @@ import { Activity, LogIn, LogOut, Edit, Plus, Trash2, ShieldCheck, ShieldOff, Us
 interface ActivityLog {
   id: string;
   user_id: string;
-  user_email: string | null;
   action: string;
   entity_type: string;
   entity_id: string | null;
@@ -114,7 +113,7 @@ const ActivityLogPanel = () => {
                     <span className="text-muted-foreground">{log.entity_type.replace("_", " ")}</span>
                   </p>
                   <p className="text-[11px] text-muted-foreground truncate">
-                    {log.user_email ?? log.user_id.slice(0, 8)}
+                    {log.user_id.slice(0, 8)}…
                     {log.details && Object.keys(log.details).length > 0 && (
                       <> — {JSON.stringify(log.details).slice(0, 80)}</>
                     )}
