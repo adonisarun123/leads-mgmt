@@ -2,15 +2,24 @@ export type JobType = "Live-in" | "Full-time" | "Part-time";
 export type LeadPriority = "Hot" | "Warm" | "Cold";
 export type LeadStatus = "In-progress" | "Won" | "Lost";
 export type SalesPerson = "Laxmi" | "Anjum" | "Saritha" | "Rashmi";
-export type TaskOption = "Housekeeping" | "Dusting" | "Cooking";
-export type LanguageOption = "Hindi" | "Kannada";
 
 export const JOB_TYPES: JobType[] = ["Live-in", "Full-time", "Part-time"];
 export const PRIORITIES: LeadPriority[] = ["Hot", "Warm", "Cold"];
 export const STATUSES: LeadStatus[] = ["In-progress", "Won", "Lost"];
 export const SALES_PERSONS: SalesPerson[] = ["Laxmi", "Anjum", "Saritha", "Rashmi"];
-export const TASK_OPTIONS: TaskOption[] = ["Housekeeping", "Dusting", "Cooking"];
-export const LANGUAGE_OPTIONS: LanguageOption[] = ["Hindi", "Kannada"];
+
+export const TASK_OPTIONS: string[] = [
+  "Housekeeping", "Dusting", "Cooking - South", "Cooking - North", "Elderly care",
+  "Child care", "Driving", "Mopping", "Masseur", "Patient care",
+  "Utensils cleaning", "Washing Cloths", "Carpentry", "Gardening",
+];
+
+export const LANGUAGE_OPTIONS: string[] = [
+  "Hindi", "Kannada", "Tamil", "Telugu", "Malayalam", "Marathi", "Bengali",
+  "Gujarati", "Punjabi", "Odia", "Assamese", "Urdu", "Sanskrit", "Konkani",
+  "Manipuri", "Bodo", "Dogri", "Kashmiri", "Maithili", "Santali", "Sindhi",
+  "Nepali", "Tulu", "Bhojpuri", "Rajasthani", "Haryanvi", "Chhattisgarhi",
+];
 
 export interface NewPlacement {
   id: string;
