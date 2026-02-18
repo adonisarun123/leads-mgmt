@@ -27,7 +27,25 @@ const UserApprovalPanel = () => {
       setLoading(false);
       return;
     }
-    setUsers((data as UserRole[]) || []);
+    const roles = (data as UserRole[]) || [];
+
+    // Fetch emails via edge function
+    try {
+      const { data: emailData, error: fnError } = await supabase.functions.invoke("get-user-emails");
+      if (!fnError && emailData?.emails) {
+        const enriched = roles.map((r) => ({
+          ...r,
+          email: emailData.emails[r.user_id] ?? r.user_id,
+        }));
+        setUsers(enriched);
+        setLoading(false);
+        return;
+      }
+    } catch {
+      // fallback to user_id display
+    }
+
+    setUsers(roles);
     setLoading(false);
   };
 
@@ -75,7 +93,7 @@ const UserApprovalPanel = () => {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>User ID</TableHead>
+            <TableHead>Email</TableHead>
             <TableHead>Role</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Actions</TableHead>
@@ -89,7 +107,7 @@ const UserApprovalPanel = () => {
           )}
           {users.map((u) => (
             <TableRow key={u.id}>
-              <TableCell className="text-xs font-mono truncate max-w-[200px]">{u.user_id}</TableCell>
+              <TableCell className="text-xs truncate max-w-[250px]">{u.email ?? u.user_id}</TableCell>
               <TableCell>
                 <Select value={u.role} onValueChange={(v) => handleRoleChange(u.id, v)}>
                   <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
