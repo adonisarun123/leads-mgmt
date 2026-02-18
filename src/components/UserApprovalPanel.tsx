@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
+import { logActivity } from "@/lib/activity-logger";
 import { Check, X } from "lucide-react";
 
 interface UserRole {
@@ -41,6 +42,7 @@ const UserApprovalPanel = () => {
       return;
     }
     toast({ title: "Approved", description: "User has been approved." });
+    await logActivity({ action: "approve_user", entityType: "user_roles", entityId: id });
     fetchUsers();
   };
 
@@ -51,6 +53,7 @@ const UserApprovalPanel = () => {
       return;
     }
     toast({ title: "Revoked", description: "User access has been revoked." });
+    await logActivity({ action: "revoke_user", entityType: "user_roles", entityId: id });
     fetchUsers();
   };
 
@@ -61,6 +64,7 @@ const UserApprovalPanel = () => {
       return;
     }
     toast({ title: "Updated", description: `Role changed to ${newRole}.` });
+    await logActivity({ action: "change_role", entityType: "user_roles", entityId: id, details: { newRole } });
     fetchUsers();
   };
 

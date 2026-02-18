@@ -45,7 +45,7 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, userRo
     });
   }, [data, filterStatus, filterPriority, filterSalesPerson]);
 
-  const canEdit = userRole === "admin" || userRole === "manager";
+  const canEdit = userRole === "admin";
 
   const handleInlineChange = (id: string, field: string, value: string, label: string) => {
     setConfirm({ id, field, value, label });
