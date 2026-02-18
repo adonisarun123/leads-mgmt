@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { ClipboardList, Flame, Trophy, XCircle, Clock } from "lucide-react";
 import type { NewPlacement, Replacement } from "@/types/leads";
 
@@ -19,25 +18,23 @@ const KpiCards = ({ data, label }: KpiCardsProps) => {
   }, [data]);
 
   const cards = [
-    { label: `Total ${label}`, value: stats.total, icon: ClipboardList, color: "text-primary" },
-    { label: "Hot Leads", value: stats.hot, icon: Flame, color: "text-destructive" },
-    { label: "In-progress", value: stats.inProgress, icon: Clock, color: "text-orange-500" },
-    { label: "Won", value: stats.won, icon: Trophy, color: "text-green-600" },
-    { label: "Lost", value: stats.lost, icon: XCircle, color: "text-muted-foreground" },
+    { label: `Total ${label}`, value: stats.total, icon: ClipboardList, iconBg: "bg-primary/15 text-primary", gradient: "from-primary/10 to-primary/5" },
+    { label: "Hot Leads", value: stats.hot, icon: Flame, iconBg: "bg-destructive/15 text-destructive", gradient: "from-destructive/10 to-destructive/5" },
+    { label: "In-progress", value: stats.inProgress, icon: Clock, iconBg: "bg-orange-500/15 text-orange-600", gradient: "from-orange-500/10 to-orange-500/5" },
+    { label: "Won", value: stats.won, icon: Trophy, iconBg: "bg-emerald-500/15 text-emerald-600", gradient: "from-emerald-500/10 to-emerald-500/5" },
+    { label: "Lost", value: stats.lost, icon: XCircle, iconBg: "bg-muted text-muted-foreground", gradient: "from-muted/50 to-muted/20" },
   ];
 
   return (
     <div className="grid grid-cols-2 gap-3 mb-4 sm:grid-cols-3 lg:grid-cols-5">
       {cards.map((c) => (
-        <Card key={c.label} className="shadow-sm">
-          <CardContent className="flex items-center gap-3 p-4">
-            <c.icon className={`h-8 w-8 shrink-0 ${c.color}`} />
-            <div>
-              <p className="text-2xl font-bold leading-none">{c.value}</p>
-              <p className="text-xs text-muted-foreground mt-1">{c.label}</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div key={c.label} className={`kpi-card bg-gradient-to-br ${c.gradient}`}>
+          <div className={`inline-flex items-center justify-center rounded-lg p-2 mb-2 ${c.iconBg}`}>
+            <c.icon className="h-4 w-4" />
+          </div>
+          <p className="text-2xl font-bold tracking-tight leading-none">{c.value}</p>
+          <p className="text-[11px] text-muted-foreground mt-1 font-medium">{c.label}</p>
+        </div>
       ))}
     </div>
   );

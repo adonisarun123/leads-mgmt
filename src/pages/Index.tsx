@@ -11,7 +11,7 @@ import KpiCards from "@/components/KpiCards";
 import SummaryDashboard from "@/components/SummaryDashboard";
 import UserApprovalPanel from "@/components/UserApprovalPanel";
 import type { NewPlacement, Replacement } from "@/types/leads";
-import { LogOut, ShieldAlert, LayoutDashboard } from "lucide-react";
+import { LogOut, ShieldAlert, LayoutDashboard, ClipboardList, RefreshCcw, Users } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -105,17 +105,18 @@ const Index = () => {
 
   if (!user) return null;
 
-  // Pending approval screen
   if (approved === false) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted">
-        <div className="w-full max-w-sm rounded-lg border bg-card p-6 shadow-sm text-center">
-          <ShieldAlert className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
-          <h1 className="text-lg font-semibold text-card-foreground mb-1">Approval Pending</h1>
-          <p className="text-sm text-muted-foreground mb-4">
-            Your account is awaiting admin approval. Please contact <strong>suraj@ezyhelpers.com</strong> to get approved.
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="w-full max-w-sm rounded-xl border bg-card p-8 shadow-lg text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-orange-500/15">
+            <ShieldAlert className="h-7 w-7 text-orange-600" />
+          </div>
+          <h1 className="text-lg font-bold text-card-foreground mb-1">Approval Pending</h1>
+          <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+            Your account is awaiting admin approval. Please contact <strong className="text-foreground">suraj@ezyhelpers.com</strong> to get approved.
           </p>
-          <Button variant="outline" onClick={handleLogout} className="gap-2">
+          <Button variant="outline" onClick={handleLogout} className="gap-2 w-full rounded-lg">
             <LogOut className="h-4 w-4" /> Sign Out
           </Button>
         </div>
@@ -123,31 +124,53 @@ const Index = () => {
     );
   }
 
-  if (approved === null) return null; // still loading
+  if (approved === null) return null;
 
   const roleLabel = userRole.charAt(0).toUpperCase() + userRole.slice(1);
   const isAdmin = userRole === "admin";
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b bg-card px-4 py-3 shadow-sm">
-        <h1 className="text-lg font-bold text-foreground">EzyHelpers Ops</h1>
-        <div className="flex items-center gap-3">
-          <Badge variant="outline" className="text-xs">{roleLabel}</Badge>
-          <span className="text-xs text-muted-foreground">{user.email}</span>
-          <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2">
-            <LogOut className="h-4 w-4" /> Sign Out
-          </Button>
+      <header className="sticky top-0 z-30 border-b bg-card/80 backdrop-blur-md px-4 py-2.5 shadow-sm">
+        <div className="mx-auto flex max-w-7xl items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
+              E
+            </div>
+            <h1 className="text-base font-bold text-foreground hidden sm:block">EzyHelpers Ops</h1>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Badge variant="secondary" className="text-[10px] font-semibold px-2 py-0.5 rounded-full">{roleLabel}</Badge>
+            <span className="text-xs text-muted-foreground hidden md:inline">{user.email}</span>
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-1.5 text-xs h-8 rounded-lg">
+              <LogOut className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Sign Out</span>
+            </Button>
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl p-4">
+      <main className="mx-auto max-w-7xl px-4 py-5">
         <Tabs defaultValue="dashboard">
-          <TabsList className="mb-4">
-            <TabsTrigger value="dashboard" className="gap-1"><LayoutDashboard className="h-3.5 w-3.5" /> Dashboard</TabsTrigger>
-            <TabsTrigger value="placements">New Placements</TabsTrigger>
-            <TabsTrigger value="replacements">Replacements</TabsTrigger>
-            {isAdmin && <TabsTrigger value="users">User Management</TabsTrigger>}
+          <TabsList className="mb-5 h-10 bg-card border shadow-sm rounded-xl p-1">
+            <TabsTrigger value="dashboard" className="gap-1.5 rounded-lg text-xs data-[state=active]:shadow-sm">
+              <LayoutDashboard className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Dashboard</span>
+            </TabsTrigger>
+            <TabsTrigger value="placements" className="gap-1.5 rounded-lg text-xs data-[state=active]:shadow-sm">
+              <ClipboardList className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">New Placements</span>
+            </TabsTrigger>
+            <TabsTrigger value="replacements" className="gap-1.5 rounded-lg text-xs data-[state=active]:shadow-sm">
+              <RefreshCcw className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Replacements</span>
+            </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="users" className="gap-1.5 rounded-lg text-xs data-[state=active]:shadow-sm">
+                <Users className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Users</span>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="dashboard">
@@ -168,7 +191,7 @@ const Index = () => {
 
           {isAdmin && (
             <TabsContent value="users">
-              <h2 className="text-lg font-semibold mb-3">User Approval & Role Management</h2>
+              <h2 className="text-lg font-bold mb-4">User Approval & Role Management</h2>
               <UserApprovalPanel />
             </TabsContent>
           )}

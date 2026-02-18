@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import {
   ClipboardList, Flame, Trophy, XCircle, Clock, Users, TrendingUp,
-  AlertTriangle, Camera, Bell, BellOff, HelpCircle,
+  AlertTriangle, Camera, Bell, BellOff, HelpCircle, ArrowUpRight, ArrowDownRight,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import useDashboardTour from "@/hooks/use-dashboard-tour";
@@ -24,18 +24,41 @@ interface SummaryDashboardProps {
 }
 
 const COLORS = {
-  hot: "hsl(0, 84%, 60%)",
-  warm: "hsl(35, 92%, 55%)",
-  cold: "hsl(210, 50%, 55%)",
-  inProgress: "hsl(35, 92%, 55%)",
-  won: "hsl(142, 60%, 45%)",
-  lost: "hsl(0, 0%, 60%)",
-  green: "hsl(142, 60%, 45%)",
-  amber: "hsl(35, 92%, 55%)",
-  red: "hsl(0, 84%, 60%)",
-  placement: "hsl(222, 47%, 30%)",
-  replacement: "hsl(210, 50%, 55%)",
-  target: "hsl(0, 84%, 60%)",
+  hot: "hsl(0, 72%, 51%)",
+  warm: "hsl(38, 92%, 50%)",
+  cold: "hsl(210, 100%, 52%)",
+  inProgress: "hsl(38, 92%, 50%)",
+  won: "hsl(152, 60%, 42%)",
+  lost: "hsl(220, 10%, 60%)",
+  green: "hsl(152, 60%, 42%)",
+  amber: "hsl(38, 92%, 50%)",
+  red: "hsl(0, 72%, 51%)",
+  placement: "hsl(230, 65%, 52%)",
+  replacement: "hsl(210, 100%, 52%)",
+  target: "hsl(0, 72%, 51%)",
+  totalLine: "hsl(222, 47%, 20%)",
+};
+
+const KPI_GRADIENTS: Record<string, string> = {
+  "Total Leads": "from-primary/10 to-primary/5",
+  "New Placements": "from-blue-500/10 to-blue-500/5",
+  "Replacements": "from-indigo-500/10 to-indigo-500/5",
+  "Hot Leads": "from-destructive/10 to-destructive/5",
+  "In-progress": "from-orange-500/10 to-orange-500/5",
+  "Won": "from-emerald-500/10 to-emerald-500/5",
+  "Lost": "from-muted-foreground/10 to-muted/5",
+  "Conversion Rate": "from-emerald-500/10 to-emerald-500/5",
+};
+
+const KPI_ICON_BG: Record<string, string> = {
+  "Total Leads": "bg-primary/15 text-primary",
+  "New Placements": "bg-blue-500/15 text-blue-600",
+  "Replacements": "bg-indigo-500/15 text-indigo-600",
+  "Hot Leads": "bg-destructive/15 text-destructive",
+  "In-progress": "bg-orange-500/15 text-orange-600",
+  "Won": "bg-emerald-500/15 text-emerald-600",
+  "Lost": "bg-muted text-muted-foreground",
+  "Conversion Rate": "bg-emerald-500/15 text-emerald-600",
 };
 
 const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) => {
@@ -98,9 +121,9 @@ const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) =
 
   const ageingData = useMemo(
     () => [
-      { name: "0–3 days", value: stats.ageing.green, fill: COLORS.green },
-      { name: "4–7 days", value: stats.ageing.amber, fill: COLORS.amber },
-      { name: "8+ days", value: stats.ageing.red, fill: COLORS.red },
+      { name: "0–3d", value: stats.ageing.green, fill: COLORS.green },
+      { name: "4–7d", value: stats.ageing.amber, fill: COLORS.amber },
+      { name: "8+d", value: stats.ageing.red, fill: COLORS.red },
     ],
     [stats.ageing]
   );
@@ -123,33 +146,32 @@ const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) =
       const dateStr = format(day, "yyyy-MM-dd");
       const p = placements.filter((pl) => format(parseISO(pl.created_at), "yyyy-MM-dd") === dateStr).length;
       const r = replacements.filter((rl) => format(parseISO(rl.created_at), "yyyy-MM-dd") === dateStr).length;
-      days.push({
-        date: format(day, "dd MMM"),
-        placements: p,
-        replacements: r,
-        total: p + r,
-      });
+      days.push({ date: format(day, "dd MMM"), placements: p, replacements: r, total: p + r });
     }
     return days;
   }, [placements, replacements]);
 
-  // Drift detection
   const driftAlerts = useMemo(() => {
     if (!alertsEnabled) return [];
     const alerts: { date: string; actual: number; target: number }[] = [];
-    // Check last 7 days (excluding today)
     for (let i = 1; i <= 7; i++) {
       const day = startOfDay(subDays(new Date(), i));
       const dateStr = format(day, "yyyy-MM-dd");
       const p = placements.filter((pl) => format(parseISO(pl.created_at), "yyyy-MM-dd") === dateStr).length;
       const r = replacements.filter((rl) => format(parseISO(rl.created_at), "yyyy-MM-dd") === dateStr).length;
-      const actual = p + r;
-      if (actual < dailyTarget) {
-        alerts.push({ date: format(day, "dd MMM"), actual, target: dailyTarget });
-      }
+      if (p + r < dailyTarget) alerts.push({ date: format(day, "dd MMM"), actual: p + r, target: dailyTarget });
     }
     return alerts;
   }, [placements, replacements, dailyTarget, alertsEnabled]);
+
+  // Today vs yesterday comparison
+  const todayVsYesterday = useMemo(() => {
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    const yestStr = format(subDays(new Date(), 1), "yyyy-MM-dd");
+    const todayCount = allLeads.filter((l) => format(parseISO(l.created_at), "yyyy-MM-dd") === todayStr).length;
+    const yestCount = allLeads.filter((l) => format(parseISO(l.created_at), "yyyy-MM-dd") === yestStr).length;
+    return { today: todayCount, yesterday: yestCount, diff: todayCount - yestCount };
+  }, [allLeads]);
 
   const handleSetTarget = () => {
     const val = Math.max(1, Number(targetInput) || 1);
@@ -171,7 +193,7 @@ const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) =
     setExporting(true);
     try {
       const dataUrl = await toPng(dashboardRef.current, {
-        backgroundColor: "#ffffff",
+        backgroundColor: "hsl(220, 20%, 97%)",
         pixelRatio: 2,
         cacheBust: true,
       });
@@ -193,68 +215,93 @@ const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) =
   };
 
   const kpiCards = [
-    { label: "Total Leads", value: stats.total, icon: ClipboardList, color: "text-primary" },
-    { label: "New Placements", value: stats.totalPlacements, icon: Users, color: "text-blue-600" },
-    { label: "Replacements", value: stats.totalReplacements, icon: TrendingUp, color: "text-indigo-600" },
-    { label: "Hot Leads", value: stats.hot, icon: Flame, color: "text-destructive" },
-    { label: "In-progress", value: stats.inProgress, icon: Clock, color: "text-orange-500" },
-    { label: "Won", value: stats.won, icon: Trophy, color: "text-green-600" },
-    { label: "Lost", value: stats.lost, icon: XCircle, color: "text-muted-foreground" },
-    { label: "Conversion Rate", value: `${stats.conversionRate}%`, icon: TrendingUp, color: "text-green-600" },
+    { label: "Total Leads", value: stats.total, icon: ClipboardList },
+    { label: "New Placements", value: stats.totalPlacements, icon: Users },
+    { label: "Replacements", value: stats.totalReplacements, icon: TrendingUp },
+    { label: "Hot Leads", value: stats.hot, icon: Flame },
+    { label: "In-progress", value: stats.inProgress, icon: Clock },
+    { label: "Won", value: stats.won, icon: Trophy },
+    { label: "Lost", value: stats.lost, icon: XCircle },
+    { label: "Conversion Rate", value: `${stats.conversionRate}%`, icon: TrendingUp },
   ];
 
+  const customTooltipStyle = {
+    backgroundColor: "hsl(0, 0%, 100%)",
+    border: "1px solid hsl(220, 16%, 90%)",
+    borderRadius: "8px",
+    fontSize: "12px",
+    boxShadow: "0 4px 12px hsl(220 16% 90% / 0.5)",
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Top bar: Export + Tour */}
-      <div className="flex items-center justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={resetTour} className="gap-1 text-xs">
-          <HelpCircle className="h-3.5 w-3.5" /> Tour
-        </Button>
-        <Button
-          id="export-png-btn"
-          variant="outline"
-          size="sm"
-          onClick={handleExportPng}
-          disabled={exporting}
-          className="gap-2"
-        >
-          <Camera className="h-4 w-4" />
-          {exporting ? "Exporting…" : "Export PNG"}
-        </Button>
+    <div className="space-y-5">
+      {/* Top bar */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-foreground sm:text-2xl">Dashboard Overview</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Today: <span className="font-semibold text-foreground">{todayVsYesterday.today}</span> leads
+            {todayVsYesterday.diff !== 0 && (
+              <span className={`inline-flex items-center ml-1.5 text-xs font-medium ${todayVsYesterday.diff > 0 ? "text-emerald-600" : "text-destructive"}`}>
+                {todayVsYesterday.diff > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                {Math.abs(todayVsYesterday.diff)} vs yesterday
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={resetTour} className="gap-1.5 text-xs hidden sm:flex">
+            <HelpCircle className="h-3.5 w-3.5" /> Tour
+          </Button>
+          <Button
+            id="export-png-btn"
+            variant="outline"
+            size="sm"
+            onClick={handleExportPng}
+            disabled={exporting}
+            className="gap-2 shadow-sm"
+          >
+            <Camera className="h-4 w-4" />
+            <span className="hidden sm:inline">{exporting ? "Exporting…" : "Export PNG"}</span>
+          </Button>
+        </div>
       </div>
 
-      <div ref={dashboardRef} className="space-y-6 bg-background p-1">
+      <div ref={dashboardRef} className="space-y-5 bg-background rounded-lg">
         {/* KPI row */}
-        <div id="kpi-cards" className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+        <div id="kpi-cards" className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">
           {kpiCards.map((c) => (
-            <Card key={c.label} className="shadow-sm">
-              <CardContent className="flex flex-col items-center p-3 text-center">
-                <c.icon className={`h-6 w-6 mb-1 ${c.color}`} />
-                <p className="text-xl font-bold leading-none">{c.value}</p>
-                <p className="text-[10px] text-muted-foreground mt-1 leading-tight">{c.label}</p>
-              </CardContent>
-            </Card>
+            <div key={c.label} className={`kpi-card bg-gradient-to-br ${KPI_GRADIENTS[c.label] || ""}`}>
+              <div className={`inline-flex items-center justify-center rounded-lg p-2 mb-2 ${KPI_ICON_BG[c.label] || "bg-muted text-muted-foreground"}`}>
+                <c.icon className="h-4 w-4" />
+              </div>
+              <p className="text-2xl font-bold tracking-tight leading-none">{c.value}</p>
+              <p className="text-[11px] text-muted-foreground mt-1 font-medium">{c.label}</p>
+            </div>
           ))}
         </div>
 
         {/* Drift Alerts */}
         <div id="drift-alerts">
-          <Card className="shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center justify-between">
-                <span className="flex items-center gap-1">
-                  <AlertTriangle className="h-4 w-4 text-orange-500" /> Daily Lead Target & Drift Alerts
+          <div className="chart-card">
+            <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+              <CardTitle className="text-sm font-semibold flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <div className="inline-flex items-center justify-center rounded-lg bg-orange-500/15 text-orange-600 p-1.5">
+                    <AlertTriangle className="h-4 w-4" />
+                  </div>
+                  Daily Lead Target & Alerts
                 </span>
-                <Button variant="ghost" size="sm" onClick={toggleAlerts} className="gap-1 text-xs h-7">
+                <Button variant="ghost" size="sm" onClick={toggleAlerts} className="gap-1.5 text-xs h-7 rounded-full">
                   {alertsEnabled ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
                   {alertsEnabled ? "On" : "Off"}
                 </Button>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-end gap-3 mb-3">
+            <CardContent className="px-4 pb-4 sm:px-6 sm:pb-5">
+              <div className="flex flex-wrap items-end gap-3 mb-3">
                 <div className="space-y-1">
-                  <Label className="text-xs">Daily target (leads/day)</Label>
+                  <Label className="text-xs font-medium">Daily target (leads/day)</Label>
                   <Input
                     type="number"
                     min={1}
@@ -264,129 +311,135 @@ const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) =
                     onKeyDown={(e) => e.key === "Enter" && handleSetTarget()}
                   />
                 </div>
-                <Button size="sm" onClick={handleSetTarget} className="h-8 text-xs">Set</Button>
+                <Button size="sm" onClick={handleSetTarget} className="h-8 text-xs rounded-lg">Set Target</Button>
               </div>
               {alertsEnabled && driftAlerts.length > 0 && (
                 <div className="space-y-2">
                   {driftAlerts.slice(0, 3).map((a) => (
-                    <Alert key={a.date} variant="destructive" className="py-2">
+                    <Alert key={a.date} variant="destructive" className="py-2 rounded-lg">
                       <AlertTriangle className="h-4 w-4" />
-                      <AlertTitle className="text-xs font-medium">Below target on {a.date}</AlertTitle>
+                      <AlertTitle className="text-xs font-semibold">Below target on {a.date}</AlertTitle>
                       <AlertDescription className="text-xs">
-                        Only {a.actual} lead(s) vs target of {a.target}. Shortfall: {a.target - a.actual}.
+                        {a.actual} lead(s) vs target {a.target} — shortfall of {a.target - a.actual}
                       </AlertDescription>
                     </Alert>
                   ))}
                   {driftAlerts.length > 3 && (
-                    <p className="text-xs text-muted-foreground">+ {driftAlerts.length - 3} more day(s) below target this week</p>
+                    <p className="text-xs text-muted-foreground">+ {driftAlerts.length - 3} more day(s) below target</p>
                   )}
                 </div>
               )}
               {alertsEnabled && driftAlerts.length === 0 && (
-                <p className="text-xs text-green-600 font-medium">✓ All days in the past week met the daily target.</p>
+                <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2">
+                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <p className="text-xs text-emerald-700 font-medium">All days this week met the daily target</p>
+                </div>
               )}
             </CardContent>
-          </Card>
+          </div>
         </div>
 
-        {/* Charts row 1 */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card id="chart-status">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Lead Status Distribution</CardTitle>
+        {/* Charts row 1 — stacks on mobile */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div id="chart-status" className="chart-card">
+            <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+              <CardTitle className="text-sm font-semibold">Status Distribution</CardTitle>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={220}>
+            <CardContent className="px-2 pb-3 sm:px-4">
+              <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
-                  <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, value }) => `${name}: ${value}`}>
-                    {statusData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                  <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={3} label={({ name, value }) => `${name}: ${value}`} labelLine={false} style={{ fontSize: 11 }}>
+                    {statusData.map((entry, i) => <Cell key={i} fill={entry.fill} stroke="none" />)}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip contentStyle={customTooltipStyle} />
                 </PieChart>
               </ResponsiveContainer>
             </CardContent>
-          </Card>
+          </div>
 
-          <Card id="chart-priority">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Priority Breakdown</CardTitle>
+          <div id="chart-priority" className="chart-card">
+            <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+              <CardTitle className="text-sm font-semibold">Priority Breakdown</CardTitle>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={220}>
+            <CardContent className="px-2 pb-3 sm:px-4">
+              <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
-                  <Pie data={priorityData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, value }) => `${name}: ${value}`}>
-                    {priorityData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                  <Pie data={priorityData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={3} label={({ name, value }) => `${name}: ${value}`} labelLine={false} style={{ fontSize: 11 }}>
+                    {priorityData.map((entry, i) => <Cell key={i} fill={entry.fill} stroke="none" />)}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip contentStyle={customTooltipStyle} />
                 </PieChart>
               </ResponsiveContainer>
             </CardContent>
-          </Card>
+          </div>
 
-          <Card id="chart-ageing">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-1">
-                <AlertTriangle className="h-4 w-4 text-orange-500" /> Lead Ageing
+          <div id="chart-ageing" className="chart-card sm:col-span-2 lg:col-span-1">
+            <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <div className="inline-flex items-center justify-center rounded-md bg-orange-500/15 text-orange-600 p-1">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                </div>
+                Lead Ageing
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={220}>
+            <CardContent className="px-2 pb-3 sm:px-4">
+              <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={ageingData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Bar dataKey="value" name="Leads" radius={[4, 4, 0, 0]}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={customTooltipStyle} />
+                  <Bar dataKey="value" name="Leads" radius={[6, 6, 0, 0]}>
                     {ageingData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
-          </Card>
+          </div>
         </div>
 
         {/* Charts row 2 */}
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card id="chart-sales">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Sales Person Performance</CardTitle>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div id="chart-sales" className="chart-card">
+            <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+              <CardTitle className="text-sm font-semibold">Sales Person Performance</CardTitle>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={salesData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={60} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="won" name="Won" fill={COLORS.won} stackId="a" />
+            <CardContent className="px-2 pb-3 sm:px-4">
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={salesData} layout="vertical" barGap={2}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={55} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={customTooltipStyle} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="won" name="Won" fill={COLORS.won} stackId="a" radius={[0, 0, 0, 0]} />
                   <Bar dataKey="inProgress" name="In-progress" fill={COLORS.inProgress} stackId="a" />
                   <Bar dataKey="total" name="Total" fill={COLORS.cold} radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
-          </Card>
+          </div>
 
-          <Card id="chart-trend">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Daily Lead Intake (Last 14 Days)</CardTitle>
+          <div id="chart-trend" className="chart-card">
+            <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+              <CardTitle className="text-sm font-semibold">Daily Lead Intake (14 Days)</CardTitle>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={260}>
+            <CardContent className="px-2 pb-3 sm:px-4">
+              <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={trendData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Legend />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={customTooltipStyle} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
                   <ReferenceLine y={dailyTarget} stroke={COLORS.target} strokeDasharray="6 3" label={{ value: `Target: ${dailyTarget}`, position: "right", fontSize: 10, fill: COLORS.target }} />
-                  <Line type="monotone" dataKey="total" name="Total" stroke="hsl(222, 47%, 20%)" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="total" name="Total" stroke={COLORS.totalLine} strokeWidth={2.5} dot={{ r: 3, strokeWidth: 0, fill: COLORS.totalLine }} activeDot={{ r: 5 }} />
                   <Line type="monotone" dataKey="placements" name="Placements" stroke={COLORS.placement} strokeWidth={1.5} strokeDasharray="4 2" dot={{ r: 2 }} />
                   <Line type="monotone" dataKey="replacements" name="Replacements" stroke={COLORS.replacement} strokeWidth={1.5} strokeDasharray="4 2" dot={{ r: 2 }} />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
-          </Card>
+          </div>
         </div>
       </div>
     </div>
