@@ -141,8 +141,9 @@ const Index = () => {
 
   if (approved === null) return null;
 
-  const roleLabel = userRole.charAt(0).toUpperCase() + userRole.slice(1);
+  const roleLabel = userRole === "field_officer" ? "Field Officer" : userRole.charAt(0).toUpperCase() + userRole.slice(1);
   const isAdmin = userRole === "admin";
+  const isFieldOfficer = userRole === "field_officer";
 
   return (
     <div className="min-h-screen bg-background">
@@ -202,16 +203,20 @@ const Index = () => {
 
           <TabsContent value="placements">
             <KpiCards data={placements} label="Placements" />
-            <div className="flex items-center justify-between mb-3">
-              <LeadForm onSubmit={addPlacement} loading={loading} />
-              <CsvImport userId={user.id} onSuccess={fetchPlacements} />
-            </div>
+            {!isFieldOfficer && (
+              <div className="flex items-center justify-between mb-3">
+                <LeadForm onSubmit={addPlacement} loading={loading} />
+                <CsvImport userId={user.id} onSuccess={fetchPlacements} />
+              </div>
+            )}
             <LeadTable data={placements} onUpdate={updatePlacement} userRole={userRole} />
           </TabsContent>
 
           <TabsContent value="replacements">
             <KpiCards data={replacements} label="Replacements" />
-            <LeadForm isReplacement onSubmit={addReplacement} loading={loading} />
+            {!isFieldOfficer && (
+              <LeadForm isReplacement onSubmit={addReplacement} loading={loading} />
+            )}
             <LeadTable data={replacements} isReplacement onUpdate={updateReplacement} userRole={userRole} />
           </TabsContent>
 

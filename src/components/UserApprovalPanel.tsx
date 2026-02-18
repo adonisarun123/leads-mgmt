@@ -76,7 +76,7 @@ const UserApprovalPanel = () => {
   };
 
   const handleRoleChange = async (id: string, newRole: string) => {
-    const { error } = await supabase.from("user_roles").update({ role: newRole as "admin" | "manager" | "staff" }).eq("id", id);
+    const { error } = await supabase.from("user_roles").update({ role: newRole as "admin" | "manager" | "staff" | "field_officer" }).eq("id", id);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
       return;
@@ -115,6 +115,7 @@ const UserApprovalPanel = () => {
                     <SelectItem value="admin">Admin</SelectItem>
                     <SelectItem value="manager">Manager</SelectItem>
                     <SelectItem value="staff">Staff</SelectItem>
+                    <SelectItem value="field_officer">Field Officer</SelectItem>
                   </SelectContent>
                 </Select>
               </TableCell>
