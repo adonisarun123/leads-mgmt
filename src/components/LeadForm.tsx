@@ -33,16 +33,19 @@ const LeadForm = ({ isReplacement = false, onSubmit, loading }: LeadFormProps) =
   const [status, setStatus] = useState<LeadStatus | "">("");
   const [salesPerson, setSalesPerson] = useState<SalesPerson | "">("");
   const [assignTo, setAssignTo] = useState("");
+  const [attempted, setAttempted] = useState(false);
 
   const [confirm, setConfirm] = useState<{ field: string; value: string; setter: (v: any) => void } | null>(null);
 
   const isValid =
-    date && area && apartment && jobType && tasks.length > 0 && language.length > 0 && salary && priority && status && salesPerson &&
-    (!isReplacement || assignTo);
+    date && area.trim() && apartment.trim() && jobType && tasks.length > 0 && language.length > 0 && salary.trim() && priority && status && salesPerson &&
+    (!isReplacement || assignTo.trim());
 
   const handleConfirmField = (field: string, value: string, setter: (v: any) => void) => {
     setConfirm({ field, value, setter });
   };
+
+  const fieldError = (filled: boolean) => attempted && !filled ? "ring-2 ring-destructive" : "";
 
   const reset = () => {
     setDate(undefined);
@@ -56,10 +59,12 @@ const LeadForm = ({ isReplacement = false, onSubmit, loading }: LeadFormProps) =
     setStatus("");
     setSalesPerson("");
     setAssignTo("");
+    setAttempted(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setAttempted(true);
     if (!isValid) return;
     const data: any = {
       lead_in_date: format(date!, "yyyy-MM-dd"),
@@ -101,7 +106,7 @@ const LeadForm = ({ isReplacement = false, onSubmit, loading }: LeadFormProps) =
               <Label>Lead-in Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground", fieldError(!!date))}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {date ? format(date, "dd/MM/yyyy") : "DD/MM/YYYY"}
                   </Button>
@@ -115,20 +120,20 @@ const LeadForm = ({ isReplacement = false, onSubmit, loading }: LeadFormProps) =
             {/* Area */}
             <div className="space-y-1">
               <Label>Area of Requirement</Label>
-              <Input placeholder="e.g. Haralur" value={area} onChange={(e) => setArea(e.target.value)} />
+              <Input placeholder="e.g. Haralur" value={area} onChange={(e) => setArea(e.target.value)} className={fieldError(!!area.trim())} />
             </div>
 
             {/* Apartment */}
             <div className="space-y-1">
               <Label>Apartment / Society</Label>
-              <Input placeholder="e.g. SNN Raj Etternia" value={apartment} onChange={(e) => setApartment(e.target.value)} />
+              <Input placeholder="e.g. SNN Raj Etternia" value={apartment} onChange={(e) => setApartment(e.target.value)} className={fieldError(!!apartment.trim())} />
             </div>
 
             {/* Job Type */}
             <div className="space-y-1">
               <Label>Job Type</Label>
               <Select value={jobType} onValueChange={(v) => setJobType(v as JobType)}>
-                <SelectTrigger><SelectValue placeholder="Select job type" /></SelectTrigger>
+                <SelectTrigger className={fieldError(!!jobType)}><SelectValue placeholder="Select job type" /></SelectTrigger>
                 <SelectContent>
                   {JOB_TYPES.map((j) => <SelectItem key={j} value={j}>{j}</SelectItem>)}
                 </SelectContent>
@@ -138,26 +143,26 @@ const LeadForm = ({ isReplacement = false, onSubmit, loading }: LeadFormProps) =
             {/* Tasks */}
             <div className="space-y-1">
               <Label>Tasks</Label>
-              <MultiSelect options={TASK_OPTIONS} selected={tasks} onChange={setTasks} placeholder="Select tasks" />
+              <div className={cn("rounded-md", fieldError(tasks.length > 0))}><MultiSelect options={TASK_OPTIONS} selected={tasks} onChange={setTasks} placeholder="Select tasks" /></div>
             </div>
 
             {/* Language */}
             <div className="space-y-1">
               <Label>Language</Label>
-              <MultiSelect options={LANGUAGE_OPTIONS} selected={language} onChange={setLanguage} placeholder="Select language" />
+              <div className={cn("rounded-md", fieldError(language.length > 0))}><MultiSelect options={LANGUAGE_OPTIONS} selected={language} onChange={setLanguage} placeholder="Select language" /></div>
             </div>
 
             {/* Salary */}
             <div className="space-y-1">
               <Label>Salary</Label>
-              <Input placeholder="e.g. 22K" value={salary} onChange={(e) => setSalary(e.target.value)} />
+              <Input placeholder="e.g. 22K" value={salary} onChange={(e) => setSalary(e.target.value)} className={fieldError(!!salary.trim())} />
             </div>
 
             {/* Priority */}
             <div className="space-y-1">
               <Label>Lead Priority</Label>
               <Select value={priority} onValueChange={(v) => handleConfirmField("priority", v, setPriority)}>
-                <SelectTrigger><SelectValue placeholder="Select priority" /></SelectTrigger>
+                <SelectTrigger className={fieldError(!!priority)}><SelectValue placeholder="Select priority" /></SelectTrigger>
                 <SelectContent>
                   {PRIORITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                 </SelectContent>
@@ -168,7 +173,7 @@ const LeadForm = ({ isReplacement = false, onSubmit, loading }: LeadFormProps) =
             <div className="space-y-1">
               <Label>Lead Status</Label>
               <Select value={status} onValueChange={(v) => handleConfirmField("status", v, setStatus)}>
-                <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
+                <SelectTrigger className={fieldError(!!status)}><SelectValue placeholder="Select status" /></SelectTrigger>
                 <SelectContent>
                   {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
@@ -179,7 +184,7 @@ const LeadForm = ({ isReplacement = false, onSubmit, loading }: LeadFormProps) =
             <div className="space-y-1">
               <Label>Sales Person</Label>
               <Select value={salesPerson} onValueChange={(v) => handleConfirmField("salesPerson", v, setSalesPerson)}>
-                <SelectTrigger><SelectValue placeholder="Select person" /></SelectTrigger>
+                <SelectTrigger className={fieldError(!!salesPerson)}><SelectValue placeholder="Select person" /></SelectTrigger>
                 <SelectContent>
                   {SALES_PERSONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
@@ -190,7 +195,7 @@ const LeadForm = ({ isReplacement = false, onSubmit, loading }: LeadFormProps) =
             {isReplacement && (
               <div className="space-y-1">
                 <Label>Assign To</Label>
-                <Input placeholder="Ops exec / Field officer" value={assignTo} onChange={(e) => setAssignTo(e.target.value)} />
+                <Input placeholder="Ops exec / Field officer" value={assignTo} onChange={(e) => setAssignTo(e.target.value)} className={fieldError(!!assignTo.trim())} />
               </div>
             )}
 
