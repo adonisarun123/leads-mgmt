@@ -41,7 +41,7 @@ const MultiSelect = ({ options, selected, onChange, placeholder = "Select..." }:
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-2" align="start">
+      <PopoverContent className="w-full max-h-60 overflow-y-auto overscroll-contain p-2 z-50 bg-popover" align="start">
         {options.map((opt) => (
           <label key={opt} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-accent">
             <Checkbox checked={selected.includes(opt)} onCheckedChange={() => toggle(opt)} />
