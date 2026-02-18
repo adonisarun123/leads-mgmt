@@ -1,13 +1,21 @@
-import { useMemo } from "react";
+import { useRef, useMemo, useState, useCallback } from "react";
 import { differenceInDays, format, parseISO, startOfDay, subDays } from "date-fns";
+import { toPng } from "html-to-image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
-  BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
+  BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, ReferenceLine,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 import {
-  ClipboardList, Flame, Trophy, XCircle, Clock, Users, TrendingUp, AlertTriangle,
+  ClipboardList, Flame, Trophy, XCircle, Clock, Users, TrendingUp,
+  AlertTriangle, Camera, Bell, BellOff, HelpCircle,
 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import useDashboardTour from "@/hooks/use-dashboard-tour";
 import type { NewPlacement, Replacement } from "@/types/leads";
 
 interface SummaryDashboardProps {
@@ -27,9 +35,23 @@ const COLORS = {
   red: "hsl(0, 84%, 60%)",
   placement: "hsl(222, 47%, 30%)",
   replacement: "hsl(210, 50%, 55%)",
+  target: "hsl(0, 84%, 60%)",
 };
 
 const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) => {
+  const dashboardRef = useRef<HTMLDivElement>(null);
+  const [dailyTarget, setDailyTarget] = useState(() => {
+    const saved = localStorage.getItem("ezyhelpers_daily_target");
+    return saved ? Number(saved) : 5;
+  });
+  const [targetInput, setTargetInput] = useState(String(dailyTarget));
+  const [alertsEnabled, setAlertsEnabled] = useState(() => {
+    return localStorage.getItem("ezyhelpers_alerts_enabled") !== "false";
+  });
+  const [exporting, setExporting] = useState(false);
+
+  useDashboardTour();
+
   const allLeads = useMemo(() => [...placements, ...replacements], [placements, replacements]);
 
   const stats = useMemo(() => {
@@ -42,7 +64,6 @@ const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) =
     const lost = allLeads.filter((d) => d.lead_status === "Lost").length;
     const conversionRate = total > 0 ? Math.round((won / total) * 100) : 0;
 
-    // Ageing
     const ageing = allLeads.reduce(
       (acc, d) => {
         const age = differenceInDays(new Date(), new Date(d.lead_in_date));
@@ -57,7 +78,6 @@ const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) =
     return { total, totalPlacements, totalReplacements, hot, inProgress, won, lost, conversionRate, ageing };
   }, [allLeads, placements, replacements]);
 
-  // Status distribution
   const statusData = useMemo(
     () => [
       { name: "In-progress", value: stats.inProgress, fill: COLORS.inProgress },
@@ -67,7 +87,6 @@ const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) =
     [stats]
   );
 
-  // Priority breakdown
   const priorityData = useMemo(
     () => [
       { name: "Hot", value: allLeads.filter((d) => d.lead_priority === "Hot").length, fill: COLORS.hot },
@@ -77,7 +96,6 @@ const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) =
     [allLeads]
   );
 
-  // Ageing chart data
   const ageingData = useMemo(
     () => [
       { name: "0–3 days", value: stats.ageing.green, fill: COLORS.green },
@@ -87,7 +105,6 @@ const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) =
     [stats.ageing]
   );
 
-  // Sales person performance
   const salesData = useMemo(() => {
     const map: Record<string, { name: string; total: number; won: number; inProgress: number }> = {};
     allLeads.forEach((d) => {
@@ -99,20 +116,81 @@ const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) =
     return Object.values(map).sort((a, b) => b.total - a.total);
   }, [allLeads]);
 
-  // Daily trend (last 14 days)
   const trendData = useMemo(() => {
-    const days: { date: string; placements: number; replacements: number }[] = [];
+    const days: { date: string; placements: number; replacements: number; total: number }[] = [];
     for (let i = 13; i >= 0; i--) {
       const day = startOfDay(subDays(new Date(), i));
       const dateStr = format(day, "yyyy-MM-dd");
+      const p = placements.filter((pl) => format(parseISO(pl.created_at), "yyyy-MM-dd") === dateStr).length;
+      const r = replacements.filter((rl) => format(parseISO(rl.created_at), "yyyy-MM-dd") === dateStr).length;
       days.push({
         date: format(day, "dd MMM"),
-        placements: placements.filter((p) => format(parseISO(p.created_at), "yyyy-MM-dd") === dateStr).length,
-        replacements: replacements.filter((r) => format(parseISO(r.created_at), "yyyy-MM-dd") === dateStr).length,
+        placements: p,
+        replacements: r,
+        total: p + r,
       });
     }
     return days;
   }, [placements, replacements]);
+
+  // Drift detection
+  const driftAlerts = useMemo(() => {
+    if (!alertsEnabled) return [];
+    const alerts: { date: string; actual: number; target: number }[] = [];
+    // Check last 7 days (excluding today)
+    for (let i = 1; i <= 7; i++) {
+      const day = startOfDay(subDays(new Date(), i));
+      const dateStr = format(day, "yyyy-MM-dd");
+      const p = placements.filter((pl) => format(parseISO(pl.created_at), "yyyy-MM-dd") === dateStr).length;
+      const r = replacements.filter((rl) => format(parseISO(rl.created_at), "yyyy-MM-dd") === dateStr).length;
+      const actual = p + r;
+      if (actual < dailyTarget) {
+        alerts.push({ date: format(day, "dd MMM"), actual, target: dailyTarget });
+      }
+    }
+    return alerts;
+  }, [placements, replacements, dailyTarget, alertsEnabled]);
+
+  const handleSetTarget = () => {
+    const val = Math.max(1, Number(targetInput) || 1);
+    setDailyTarget(val);
+    setTargetInput(String(val));
+    localStorage.setItem("ezyhelpers_daily_target", String(val));
+    toast({ title: "Target Updated", description: `Daily lead target set to ${val}` });
+  };
+
+  const toggleAlerts = () => {
+    const next = !alertsEnabled;
+    setAlertsEnabled(next);
+    localStorage.setItem("ezyhelpers_alerts_enabled", String(next));
+    toast({ title: next ? "Alerts Enabled" : "Alerts Disabled" });
+  };
+
+  const handleExportPng = useCallback(async () => {
+    if (!dashboardRef.current) return;
+    setExporting(true);
+    try {
+      const dataUrl = await toPng(dashboardRef.current, {
+        backgroundColor: "#ffffff",
+        pixelRatio: 2,
+        cacheBust: true,
+      });
+      const link = document.createElement("a");
+      link.download = `dashboard_${format(new Date(), "yyyyMMdd_HHmm")}.png`;
+      link.href = dataUrl;
+      link.click();
+      toast({ title: "Exported", description: "Dashboard PNG saved." });
+    } catch {
+      toast({ title: "Export failed", description: "Could not generate PNG.", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  }, []);
+
+  const resetTour = () => {
+    localStorage.removeItem("ezyhelpers_dashboard_tour_done");
+    window.location.reload();
+  };
 
   const kpiCards = [
     { label: "Total Leads", value: stats.total, icon: ClipboardList, color: "text-primary" },
@@ -127,126 +205,189 @@ const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) =
 
   return (
     <div className="space-y-6">
-      {/* KPI row */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-        {kpiCards.map((c) => (
-          <Card key={c.label} className="shadow-sm">
-            <CardContent className="flex flex-col items-center p-3 text-center">
-              <c.icon className={`h-6 w-6 mb-1 ${c.color}`} />
-              <p className="text-xl font-bold leading-none">{c.value}</p>
-              <p className="text-[10px] text-muted-foreground mt-1 leading-tight">{c.label}</p>
+      {/* Top bar: Export + Tour */}
+      <div className="flex items-center justify-end gap-2">
+        <Button variant="ghost" size="sm" onClick={resetTour} className="gap-1 text-xs">
+          <HelpCircle className="h-3.5 w-3.5" /> Tour
+        </Button>
+        <Button
+          id="export-png-btn"
+          variant="outline"
+          size="sm"
+          onClick={handleExportPng}
+          disabled={exporting}
+          className="gap-2"
+        >
+          <Camera className="h-4 w-4" />
+          {exporting ? "Exporting…" : "Export PNG"}
+        </Button>
+      </div>
+
+      <div ref={dashboardRef} className="space-y-6 bg-background p-1">
+        {/* KPI row */}
+        <div id="kpi-cards" className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+          {kpiCards.map((c) => (
+            <Card key={c.label} className="shadow-sm">
+              <CardContent className="flex flex-col items-center p-3 text-center">
+                <c.icon className={`h-6 w-6 mb-1 ${c.color}`} />
+                <p className="text-xl font-bold leading-none">{c.value}</p>
+                <p className="text-[10px] text-muted-foreground mt-1 leading-tight">{c.label}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Drift Alerts */}
+        <div id="drift-alerts">
+          <Card className="shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <AlertTriangle className="h-4 w-4 text-orange-500" /> Daily Lead Target & Drift Alerts
+                </span>
+                <Button variant="ghost" size="sm" onClick={toggleAlerts} className="gap-1 text-xs h-7">
+                  {alertsEnabled ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+                  {alertsEnabled ? "On" : "Off"}
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-end gap-3 mb-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Daily target (leads/day)</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    className="h-8 w-24 text-xs"
+                    value={targetInput}
+                    onChange={(e) => setTargetInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSetTarget()}
+                  />
+                </div>
+                <Button size="sm" onClick={handleSetTarget} className="h-8 text-xs">Set</Button>
+              </div>
+              {alertsEnabled && driftAlerts.length > 0 && (
+                <div className="space-y-2">
+                  {driftAlerts.slice(0, 3).map((a) => (
+                    <Alert key={a.date} variant="destructive" className="py-2">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle className="text-xs font-medium">Below target on {a.date}</AlertTitle>
+                      <AlertDescription className="text-xs">
+                        Only {a.actual} lead(s) vs target of {a.target}. Shortfall: {a.target - a.actual}.
+                      </AlertDescription>
+                    </Alert>
+                  ))}
+                  {driftAlerts.length > 3 && (
+                    <p className="text-xs text-muted-foreground">+ {driftAlerts.length - 3} more day(s) below target this week</p>
+                  )}
+                </div>
+              )}
+              {alertsEnabled && driftAlerts.length === 0 && (
+                <p className="text-xs text-green-600 font-medium">✓ All days in the past week met the daily target.</p>
+              )}
             </CardContent>
           </Card>
-        ))}
-      </div>
+        </div>
 
-      {/* Charts row 1 */}
-      <div className="grid gap-4 md:grid-cols-3">
-        {/* Status Pie */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Lead Status Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, value }) => `${name}: ${value}`}>
-                  {statusData.map((entry, i) => (
-                    <Cell key={i} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        {/* Charts row 1 */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card id="chart-status">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Lead Status Distribution</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, value }) => `${name}: ${value}`}>
+                    {statusData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-        {/* Priority Pie */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Priority Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={priorityData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, value }) => `${name}: ${value}`}>
-                  {priorityData.map((entry, i) => (
-                    <Cell key={i} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          <Card id="chart-priority">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Priority Breakdown</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={priorityData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, value }) => `${name}: ${value}`}>
+                    {priorityData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-        {/* Ageing */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-1">
-              <AlertTriangle className="h-4 w-4 text-orange-500" /> Lead Ageing
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={ageingData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Bar dataKey="value" name="Leads" radius={[4, 4, 0, 0]}>
-                  {ageingData.map((entry, i) => (
-                    <Cell key={i} fill={entry.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
+          <Card id="chart-ageing">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-1">
+                <AlertTriangle className="h-4 w-4 text-orange-500" /> Lead Ageing
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={ageingData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Bar dataKey="value" name="Leads" radius={[4, 4, 0, 0]}>
+                    {ageingData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* Charts row 2 */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Sales Person Performance */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Sales Person Performance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={salesData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={60} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="won" name="Won" fill={COLORS.won} stackId="a" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="inProgress" name="In-progress" fill={COLORS.inProgress} stackId="a" />
-                <Bar dataKey="total" name="Total" fill={COLORS.cold} radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        {/* Charts row 2 */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card id="chart-sales">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Sales Person Performance</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={salesData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={60} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="won" name="Won" fill={COLORS.won} stackId="a" />
+                  <Bar dataKey="inProgress" name="In-progress" fill={COLORS.inProgress} stackId="a" />
+                  <Bar dataKey="total" name="Total" fill={COLORS.cold} radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-        {/* Daily Trend */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Daily Lead Intake (Last 14 Days)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="placements" name="Placements" stroke={COLORS.placement} strokeWidth={2} dot={{ r: 3 }} />
-                <Line type="monotone" dataKey="replacements" name="Replacements" stroke={COLORS.replacement} strokeWidth={2} dot={{ r: 3 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          <Card id="chart-trend">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Daily Lead Intake (Last 14 Days)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Legend />
+                  <ReferenceLine y={dailyTarget} stroke={COLORS.target} strokeDasharray="6 3" label={{ value: `Target: ${dailyTarget}`, position: "right", fontSize: 10, fill: COLORS.target }} />
+                  <Line type="monotone" dataKey="total" name="Total" stroke="hsl(222, 47%, 20%)" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="placements" name="Placements" stroke={COLORS.placement} strokeWidth={1.5} strokeDasharray="4 2" dot={{ r: 2 }} />
+                  <Line type="monotone" dataKey="replacements" name="Replacements" stroke={COLORS.replacement} strokeWidth={1.5} strokeDasharray="4 2" dot={{ r: 2 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
