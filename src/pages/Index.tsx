@@ -8,9 +8,10 @@ import { toast } from "@/hooks/use-toast";
 import LeadForm from "@/components/LeadForm";
 import LeadTable from "@/components/LeadTable";
 import KpiCards from "@/components/KpiCards";
+import SummaryDashboard from "@/components/SummaryDashboard";
 import UserApprovalPanel from "@/components/UserApprovalPanel";
 import type { NewPlacement, Replacement } from "@/types/leads";
-import { LogOut, ShieldAlert } from "lucide-react";
+import { LogOut, ShieldAlert, LayoutDashboard } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -141,12 +142,17 @@ const Index = () => {
       </header>
 
       <main className="mx-auto max-w-7xl p-4">
-        <Tabs defaultValue="placements">
+        <Tabs defaultValue="dashboard">
           <TabsList className="mb-4">
+            <TabsTrigger value="dashboard" className="gap-1"><LayoutDashboard className="h-3.5 w-3.5" /> Dashboard</TabsTrigger>
             <TabsTrigger value="placements">New Placements</TabsTrigger>
             <TabsTrigger value="replacements">Replacements</TabsTrigger>
             {isAdmin && <TabsTrigger value="users">User Management</TabsTrigger>}
           </TabsList>
+
+          <TabsContent value="dashboard">
+            <SummaryDashboard placements={placements} replacements={replacements} />
+          </TabsContent>
 
           <TabsContent value="placements">
             <KpiCards data={placements} label="Placements" />
