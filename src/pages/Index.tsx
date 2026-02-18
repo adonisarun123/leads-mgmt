@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import LeadForm from "@/components/LeadForm";
 import LeadTable from "@/components/LeadTable";
@@ -12,6 +13,7 @@ import { LogOut } from "lucide-react";
 const Index = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
+  const [userRole, setUserRole] = useState<string>("");
   const [placements, setPlacements] = useState<NewPlacement[]>([]);
   const [replacements, setReplacements] = useState<Replacement[]>([]);
   const [loading, setLoading] = useState(false);
@@ -20,13 +22,20 @@ const Index = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (!session?.user) navigate("/auth");
+      else fetchRole(session.user.id);
     });
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (!session?.user) navigate("/auth");
+      else fetchRole(session.user.id);
     });
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  const fetchRole = async (userId: string) => {
+    const { data } = await supabase.rpc("get_user_role", { _user_id: userId });
+    setUserRole((data as string) || "staff");
+  };
 
   useEffect(() => {
     if (user) {
@@ -86,14 +95,19 @@ const Index = () => {
 
   if (!user) return null;
 
+  const roleLabel = userRole.charAt(0).toUpperCase() + userRole.slice(1);
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Nav */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b bg-card px-4 py-3 shadow-sm">
         <h1 className="text-lg font-bold text-foreground">EzyHelpers Ops</h1>
-        <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2">
-          <LogOut className="h-4 w-4" /> Sign Out
-        </Button>
+        <div className="flex items-center gap-3">
+          <Badge variant="outline" className="text-xs">{roleLabel}</Badge>
+          <span className="text-xs text-muted-foreground">{user.email}</span>
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2">
+            <LogOut className="h-4 w-4" /> Sign Out
+          </Button>
+        </div>
       </header>
 
       <main className="mx-auto max-w-7xl p-4">
@@ -105,12 +119,12 @@ const Index = () => {
 
           <TabsContent value="placements">
             <LeadForm onSubmit={addPlacement} loading={loading} />
-            <LeadTable data={placements} onUpdate={updatePlacement} />
+            <LeadTable data={placements} onUpdate={updatePlacement} userRole={userRole} />
           </TabsContent>
 
           <TabsContent value="replacements">
             <LeadForm isReplacement onSubmit={addReplacement} loading={loading} />
-            <LeadTable data={replacements} isReplacement onUpdate={updateReplacement} />
+            <LeadTable data={replacements} isReplacement onUpdate={updateReplacement} userRole={userRole} />
           </TabsContent>
         </Tabs>
       </main>
