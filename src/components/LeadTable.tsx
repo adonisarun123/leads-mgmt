@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { format, differenceInDays } from "date-fns";
-import { Download } from "lucide-react";
+import { Download, ArrowRightLeft } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import PriorityBadge from "./PriorityBadge";
 import AgeBadge from "./AgeBadge";
 import ConfirmDialog from "./ConfirmDialog";
@@ -15,12 +16,15 @@ interface LeadTableProps {
   data: (NewPlacement | Replacement)[];
   isReplacement?: boolean;
   onUpdate: (id: string, field: string, value: string) => void;
+  onBulkUpdate?: (ids: string[], field: string, value: string) => void;
   userRole?: string;
 }
 
-const LeadTable = ({ data, isReplacement = false, onUpdate, userRole }: LeadTableProps) => {
+const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, userRole }: LeadTableProps) => {
   const [confirm, setConfirm] = useState<{ id: string; field: string; value: string; label: string } | null>(null);
   const [editingAssign, setEditingAssign] = useState<{ id: string; value: string } | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkTransfer, setBulkTransfer] = useState<{ ids: string[]; value: string } | null>(null);
 
   const canEdit = userRole === "admin" || userRole === "manager";
 
@@ -28,12 +32,43 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, userRole }: LeadTabl
     setConfirm({ id, field, value, label });
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.size === data.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(data.map((r) => r.id)));
+    }
+  };
+
+  const handleBulkTransfer = (salesPerson: string) => {
+    const ids = Array.from(selectedIds);
+    setBulkTransfer({ ids, value: salesPerson });
+  };
+
+  const confirmBulkTransfer = () => {
+    if (!bulkTransfer) return;
+    if (onBulkUpdate) {
+      onBulkUpdate(bulkTransfer.ids, "sales_person", bulkTransfer.value);
+    } else {
+      bulkTransfer.ids.forEach((id) => onUpdate(id, "sales_person", bulkTransfer.value));
+    }
+    setSelectedIds(new Set());
+    setBulkTransfer(null);
+  };
+
   const exportCSV = () => {
     if (data.length === 0) return;
     const headers = [
-      "Lead-in Date",
-      ...(isReplacement ? ["Age (days)"] : ["Age (days)"]),
-      "Area", "Apartment", "Job Type", "Tasks", "Language", "Salary",
+      "Lead-in Date", "Age (days)", "Area", "Apartment", "Job Type", "Tasks", "Language", "Salary",
       "Priority", "Status", "Sales Person",
       ...(isReplacement ? ["Assign To"] : []),
     ];
@@ -57,15 +92,40 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, userRole }: LeadTabl
 
   return (
     <>
-      <div className="mb-2 flex justify-end">
-        <Button variant="outline" size="sm" onClick={exportCSV} disabled={data.length === 0} className="gap-2">
-          <Download className="h-4 w-4" /> Export CSV
-        </Button>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        {/* Bulk action bar */}
+        {canEdit && selectedIds.size > 0 && (
+          <div className="flex items-center gap-2 rounded-md border bg-muted px-3 py-1.5">
+            <ArrowRightLeft className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs font-medium">{selectedIds.size} selected — Transfer to:</span>
+            <Select onValueChange={handleBulkTransfer}>
+              <SelectTrigger className="h-7 w-28 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectContent>
+                {SALES_PERSONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button variant="ghost" size="sm" className="text-xs" onClick={() => setSelectedIds(new Set())}>Clear</Button>
+          </div>
+        )}
+        <div className="ml-auto">
+          <Button variant="outline" size="sm" onClick={exportCSV} disabled={data.length === 0} className="gap-2">
+            <Download className="h-4 w-4" /> Export CSV
+          </Button>
+        </div>
       </div>
       <div className="rounded-lg border">
         <Table>
           <TableHeader className="sticky top-0 bg-muted">
             <TableRow>
+              {canEdit && (
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={data.length > 0 && selectedIds.size === data.length}
+                    onCheckedChange={toggleAll}
+                    aria-label="Select all"
+                  />
+                </TableHead>
+              )}
               <TableHead>Lead-in Date</TableHead>
               <TableHead>Age</TableHead>
               {isReplacement && <TableHead>Assign To</TableHead>}
@@ -83,13 +143,22 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, userRole }: LeadTabl
           <TableBody>
             {data.length === 0 && (
               <TableRow>
-                <TableCell colSpan={isReplacement ? 12 : 11} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={(isReplacement ? 12 : 11) + (canEdit ? 1 : 0)} className="text-center text-muted-foreground py-8">
                   No leads yet. Add one above.
                 </TableCell>
               </TableRow>
             )}
             {data.map((row) => (
-              <TableRow key={row.id} className="hover:bg-muted/50">
+              <TableRow key={row.id} className={`hover:bg-muted/50 ${selectedIds.has(row.id) ? "bg-accent/30" : ""}`}>
+                {canEdit && (
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedIds.has(row.id)}
+                      onCheckedChange={() => toggleSelect(row.id)}
+                      aria-label={`Select lead ${row.id}`}
+                    />
+                  </TableCell>
+                )}
                 <TableCell className="whitespace-nowrap">{format(new Date(row.lead_in_date), "dd/MM/yyyy")}</TableCell>
                 <TableCell><AgeBadge leadInDate={row.lead_in_date} /></TableCell>
                 {isReplacement && (
@@ -184,6 +253,7 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, userRole }: LeadTabl
         </Table>
       </div>
 
+      {/* Single row confirm */}
       <ConfirmDialog
         open={!!confirm}
         title="Confirm Change"
@@ -193,6 +263,15 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, userRole }: LeadTabl
           setConfirm(null);
         }}
         onCancel={() => setConfirm(null)}
+      />
+
+      {/* Bulk transfer confirm */}
+      <ConfirmDialog
+        open={!!bulkTransfer}
+        title="Confirm Bulk Transfer"
+        description={bulkTransfer ? `Transfer ${bulkTransfer.ids.length} lead(s) to "${bulkTransfer.value}"?` : ""}
+        onConfirm={confirmBulkTransfer}
+        onCancel={() => setBulkTransfer(null)}
       />
     </>
   );
