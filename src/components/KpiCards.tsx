@@ -18,22 +18,22 @@ const KpiCards = ({ data, label }: KpiCardsProps) => {
   }, [data]);
 
   const cards = [
-    { label: `Total ${label}`, value: stats.total, icon: ClipboardList, iconBg: "bg-primary/15 text-primary", gradient: "from-primary/10 to-primary/5" },
-    { label: "Hot Leads", value: stats.hot, icon: Flame, iconBg: "bg-destructive/15 text-destructive", gradient: "from-destructive/10 to-destructive/5" },
-    { label: "In-progress", value: stats.inProgress, icon: Clock, iconBg: "bg-orange-500/15 text-orange-600", gradient: "from-orange-500/10 to-orange-500/5" },
-    { label: "Won", value: stats.won, icon: Trophy, iconBg: "bg-emerald-500/15 text-emerald-600", gradient: "from-emerald-500/10 to-emerald-500/5" },
-    { label: "Lost", value: stats.lost, icon: XCircle, iconBg: "bg-muted text-muted-foreground", gradient: "from-muted/50 to-muted/20" },
+    { label: `Total ${label}`, value: stats.total, icon: ClipboardList, accent: "primary" as const, iconBg: "bg-primary/15 text-primary" },
+    { label: "Hot Leads", value: stats.hot, icon: Flame, accent: "destructive" as const, iconBg: "bg-destructive/15 text-destructive" },
+    { label: "In-progress", value: stats.inProgress, icon: Clock, accent: "warning" as const, iconBg: "bg-warning/15 text-warning" },
+    { label: "Won", value: stats.won, icon: Trophy, accent: "success" as const, iconBg: "bg-success/15 text-success" },
+    { label: "Lost", value: stats.lost, icon: XCircle, accent: "muted" as const, iconBg: "bg-muted text-muted-foreground" },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 mb-4 sm:grid-cols-3 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-2.5 mb-4 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
       {cards.map((c) => (
-        <div key={c.label} className={`kpi-card bg-gradient-to-br ${c.gradient}`}>
-          <div className={`inline-flex items-center justify-center rounded-lg p-2 mb-2 ${c.iconBg}`}>
-            <c.icon className="h-4 w-4" />
+        <div key={c.label} className={`kpi-card kpi-card--${c.accent}`}>
+          <div className={`inline-flex items-center justify-center rounded-lg p-1.5 sm:p-2 mb-1.5 sm:mb-2 ${c.iconBg}`}>
+            <c.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </div>
-          <p className="text-2xl font-bold tracking-tight leading-none">{c.value}</p>
-          <p className="text-[11px] text-muted-foreground mt-1 font-medium">{c.label}</p>
+          <p className="text-xl sm:text-2xl font-bold tracking-tight leading-none">{c.value}</p>
+          <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1 font-medium">{c.label}</p>
         </div>
       ))}
     </div>

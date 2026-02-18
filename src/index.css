@@ -6,42 +6,48 @@
 
 @layer base {
   :root {
-    --background: 220 20% 97%;
-    --foreground: 222 47% 11%;
+    --background: 210 20% 96%;
+    --foreground: 210 40% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 210 40% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 210 40% 11%;
 
-    --primary: 230 65% 52%;
+    --primary: 192 70% 42%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 20% 94%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 195 25% 92%;
+    --secondary-foreground: 210 40% 11%;
 
-    --muted: 220 16% 93%;
-    --muted-foreground: 220 10% 46%;
+    --muted: 210 16% 93%;
+    --muted-foreground: 210 12% 46%;
 
-    --accent: 230 65% 96%;
-    --accent-foreground: 230 65% 36%;
+    --accent: 192 50% 94%;
+    --accent-foreground: 192 70% 28%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 16% 90%;
-    --input: 220 16% 90%;
-    --ring: 230 65% 52%;
+    --border: 210 18% 89%;
+    --input: 210 18% 89%;
+    --ring: 192 70% 42%;
 
-    --radius: 0.625rem;
+    --radius: 0.75rem;
 
-    --success: 152 60% 42%;
+    --success: 160 60% 40%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
     --info: 210 100% 52%;
     --info-foreground: 0 0% 100%;
+
+    --glass-bg: 0 0% 100% / 0.7;
+    --glass-border: 210 18% 89% / 0.5;
+    --shadow-sm: 0 1px 3px 0 hsl(210 18% 50% / 0.06), 0 1px 2px -1px hsl(210 18% 50% / 0.06);
+    --shadow-md: 0 4px 12px -2px hsl(210 18% 50% / 0.08), 0 2px 6px -2px hsl(210 18% 50% / 0.04);
+    --shadow-lg: 0 10px 25px -4px hsl(210 18% 50% / 0.1), 0 4px 10px -4px hsl(210 18% 50% / 0.06);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -54,40 +60,43 @@
   }
 
   .dark {
-    --background: 224 30% 8%;
+    --background: 210 30% 8%;
     --foreground: 210 40% 96%;
 
-    --card: 224 28% 12%;
+    --card: 210 28% 12%;
     --card-foreground: 210 40% 96%;
 
-    --popover: 224 28% 12%;
+    --popover: 210 28% 12%;
     --popover-foreground: 210 40% 96%;
 
-    --primary: 230 65% 60%;
+    --primary: 192 70% 50%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 224 20% 18%;
+    --secondary: 210 20% 18%;
     --secondary-foreground: 210 40% 96%;
 
-    --muted: 224 20% 18%;
-    --muted-foreground: 215 20% 60%;
+    --muted: 210 20% 18%;
+    --muted-foreground: 210 20% 60%;
 
-    --accent: 230 40% 20%;
-    --accent-foreground: 230 65% 75%;
+    --accent: 192 40% 20%;
+    --accent-foreground: 192 70% 75%;
 
     --destructive: 0 62% 40%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 224 20% 20%;
-    --input: 224 20% 20%;
-    --ring: 230 65% 60%;
+    --border: 210 20% 20%;
+    --input: 210 20% 20%;
+    --ring: 192 70% 50%;
 
-    --success: 152 50% 38%;
+    --success: 160 50% 38%;
     --success-foreground: 0 0% 100%;
     --warning: 38 80% 45%;
     --warning-foreground: 0 0% 100%;
     --info: 210 80% 50%;
     --info-foreground: 0 0% 100%;
+
+    --glass-bg: 210 28% 12% / 0.7;
+    --glass-border: 210 20% 20% / 0.5;
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
@@ -116,12 +125,19 @@
 }
 
 @layer components {
+  .glass-header {
+    @apply bg-card/70 backdrop-blur-xl border-b border-border/40;
+    box-shadow: var(--shadow-sm);
+  }
+
   .glass-card {
-    @apply bg-card/80 backdrop-blur-sm border border-border/50 shadow-sm;
+    @apply bg-card/80 backdrop-blur-sm border border-border/40 rounded-xl;
+    box-shadow: var(--shadow-sm);
   }
 
   .kpi-card {
-    @apply relative overflow-hidden rounded-xl border border-border/40 bg-card p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+    @apply relative overflow-hidden rounded-xl border border-border/30 bg-card p-3.5 sm:p-4 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+    box-shadow: var(--shadow-sm);
   }
 
   .kpi-card::before {
@@ -131,12 +147,19 @@
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary) / 0.3));
-    border-radius: 10px 10px 0 0;
+    border-radius: 12px 12px 0 0;
   }
 
+  .kpi-card--primary::before { background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary) / 0.3)); }
+  .kpi-card--success::before { background: linear-gradient(90deg, hsl(var(--success)), hsl(var(--success) / 0.3)); }
+  .kpi-card--warning::before { background: linear-gradient(90deg, hsl(var(--warning)), hsl(var(--warning) / 0.3)); }
+  .kpi-card--destructive::before { background: linear-gradient(90deg, hsl(var(--destructive)), hsl(var(--destructive) / 0.3)); }
+  .kpi-card--info::before { background: linear-gradient(90deg, hsl(var(--info)), hsl(var(--info) / 0.3)); }
+  .kpi-card--muted::before { background: linear-gradient(90deg, hsl(var(--muted-foreground)), hsl(var(--muted-foreground) / 0.3)); }
+
   .chart-card {
-    @apply rounded-xl border border-border/40 bg-card shadow-sm overflow-hidden;
+    @apply rounded-xl border border-border/30 bg-card overflow-hidden;
+    box-shadow: var(--shadow-sm);
   }
 
   .chart-card .recharts-cartesian-grid line {

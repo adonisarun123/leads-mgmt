@@ -1,7 +1,7 @@
 import { useRef, useMemo, useState, useCallback } from "react";
 import { differenceInDays, format, parseISO, startOfDay, subDays } from "date-fns";
 import { toPng } from "html-to-image";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,37 +28,39 @@ const COLORS = {
   warm: "hsl(38, 92%, 50%)",
   cold: "hsl(210, 100%, 52%)",
   inProgress: "hsl(38, 92%, 50%)",
-  won: "hsl(152, 60%, 42%)",
-  lost: "hsl(220, 10%, 60%)",
-  green: "hsl(152, 60%, 42%)",
+  won: "hsl(160, 60%, 40%)",
+  lost: "hsl(210, 12%, 60%)",
+  green: "hsl(160, 60%, 40%)",
   amber: "hsl(38, 92%, 50%)",
   red: "hsl(0, 72%, 51%)",
-  placement: "hsl(230, 65%, 52%)",
+  placement: "hsl(192, 70%, 42%)",
   replacement: "hsl(210, 100%, 52%)",
   target: "hsl(0, 72%, 51%)",
-  totalLine: "hsl(222, 47%, 20%)",
+  totalLine: "hsl(192, 70%, 32%)",
 };
 
-const KPI_GRADIENTS: Record<string, string> = {
-  "Total Leads": "from-primary/10 to-primary/5",
-  "New Placements": "from-blue-500/10 to-blue-500/5",
-  "Replacements": "from-indigo-500/10 to-indigo-500/5",
-  "Hot Leads": "from-destructive/10 to-destructive/5",
-  "In-progress": "from-orange-500/10 to-orange-500/5",
-  "Won": "from-emerald-500/10 to-emerald-500/5",
-  "Lost": "from-muted-foreground/10 to-muted/5",
-  "Conversion Rate": "from-emerald-500/10 to-emerald-500/5",
-};
+type AccentVariant = "primary" | "info" | "success" | "warning" | "destructive" | "muted";
 
-const KPI_ICON_BG: Record<string, string> = {
-  "Total Leads": "bg-primary/15 text-primary",
-  "New Placements": "bg-blue-500/15 text-blue-600",
-  "Replacements": "bg-indigo-500/15 text-indigo-600",
-  "Hot Leads": "bg-destructive/15 text-destructive",
-  "In-progress": "bg-orange-500/15 text-orange-600",
-  "Won": "bg-emerald-500/15 text-emerald-600",
-  "Lost": "bg-muted text-muted-foreground",
-  "Conversion Rate": "bg-emerald-500/15 text-emerald-600",
+const KPI_CONFIG: { label: string; accent: AccentVariant; iconBg: string }[] = [
+  { label: "Total Leads",     accent: "primary",     iconBg: "bg-primary/15 text-primary" },
+  { label: "New Placements",  accent: "info",        iconBg: "bg-info/15 text-info" },
+  { label: "Replacements",    accent: "primary",     iconBg: "bg-primary/15 text-primary" },
+  { label: "Hot Leads",       accent: "destructive", iconBg: "bg-destructive/15 text-destructive" },
+  { label: "In-progress",     accent: "warning",     iconBg: "bg-warning/15 text-warning" },
+  { label: "Won",             accent: "success",     iconBg: "bg-success/15 text-success" },
+  { label: "Lost",            accent: "muted",       iconBg: "bg-muted text-muted-foreground" },
+  { label: "Conversion Rate", accent: "success",     iconBg: "bg-success/15 text-success" },
+];
+
+const KPI_ICONS = {
+  "Total Leads": ClipboardList,
+  "New Placements": Users,
+  "Replacements": TrendingUp,
+  "Hot Leads": Flame,
+  "In-progress": Clock,
+  "Won": Trophy,
+  "Lost": XCircle,
+  "Conversion Rate": TrendingUp,
 };
 
 const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) => {
@@ -86,7 +88,6 @@ const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) =
     const won = allLeads.filter((d) => d.lead_status === "Won").length;
     const lost = allLeads.filter((d) => d.lead_status === "Lost").length;
     const conversionRate = total > 0 ? Math.round((won / total) * 100) : 0;
-
     const ageing = allLeads.reduce(
       (acc, d) => {
         const age = differenceInDays(new Date(), new Date(d.lead_in_date));
@@ -97,7 +98,6 @@ const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) =
       },
       { green: 0, amber: 0, red: 0 }
     );
-
     return { total, totalPlacements, totalReplacements, hot, inProgress, won, lost, conversionRate, ageing };
   }, [allLeads, placements, replacements]);
 
@@ -164,7 +164,6 @@ const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) =
     return alerts;
   }, [placements, replacements, dailyTarget, alertsEnabled]);
 
-  // Today vs yesterday comparison
   const todayVsYesterday = useMemo(() => {
     const todayStr = format(new Date(), "yyyy-MM-dd");
     const yestStr = format(subDays(new Date(), 1), "yyyy-MM-dd");
@@ -193,7 +192,7 @@ const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) =
     setExporting(true);
     try {
       const dataUrl = await toPng(dashboardRef.current, {
-        backgroundColor: "hsl(220, 20%, 97%)",
+        backgroundColor: "hsl(210, 20%, 96%)",
         pixelRatio: 2,
         cacheBust: true,
       });
@@ -214,43 +213,44 @@ const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) =
     window.location.reload();
   };
 
-  const kpiCards = [
-    { label: "Total Leads", value: stats.total, icon: ClipboardList },
-    { label: "New Placements", value: stats.totalPlacements, icon: Users },
-    { label: "Replacements", value: stats.totalReplacements, icon: TrendingUp },
-    { label: "Hot Leads", value: stats.hot, icon: Flame },
-    { label: "In-progress", value: stats.inProgress, icon: Clock },
-    { label: "Won", value: stats.won, icon: Trophy },
-    { label: "Lost", value: stats.lost, icon: XCircle },
-    { label: "Conversion Rate", value: `${stats.conversionRate}%`, icon: TrendingUp },
-  ];
+  const kpiValues: Record<string, string | number> = {
+    "Total Leads": stats.total,
+    "New Placements": stats.totalPlacements,
+    "Replacements": stats.totalReplacements,
+    "Hot Leads": stats.hot,
+    "In-progress": stats.inProgress,
+    "Won": stats.won,
+    "Lost": stats.lost,
+    "Conversion Rate": `${stats.conversionRate}%`,
+  };
 
-  const customTooltipStyle = {
+  const tooltipStyle = {
     backgroundColor: "hsl(0, 0%, 100%)",
-    border: "1px solid hsl(220, 16%, 90%)",
-    borderRadius: "8px",
+    border: "1px solid hsl(210, 18%, 89%)",
+    borderRadius: "10px",
     fontSize: "12px",
-    boxShadow: "0 4px 12px hsl(220 16% 90% / 0.5)",
+    boxShadow: "0 4px 12px hsl(210 18% 50% / 0.1)",
+    padding: "8px 12px",
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       {/* Top bar */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-foreground sm:text-2xl">Dashboard Overview</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-lg font-bold text-foreground sm:text-xl truncate">Dashboard</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Today: <span className="font-semibold text-foreground">{todayVsYesterday.today}</span> leads
             {todayVsYesterday.diff !== 0 && (
-              <span className={`inline-flex items-center ml-1.5 text-xs font-medium ${todayVsYesterday.diff > 0 ? "text-emerald-600" : "text-destructive"}`}>
+              <span className={`inline-flex items-center ml-1 text-[11px] font-medium ${todayVsYesterday.diff > 0 ? "text-success" : "text-destructive"}`}>
                 {todayVsYesterday.diff > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
                 {Math.abs(todayVsYesterday.diff)} vs yesterday
               </span>
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={resetTour} className="gap-1.5 text-xs hidden sm:flex">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <Button variant="ghost" size="sm" onClick={resetTour} className="gap-1 text-xs h-8 hidden sm:flex">
             <HelpCircle className="h-3.5 w-3.5" /> Tour
           </Button>
           <Button
@@ -259,136 +259,140 @@ const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) =
             size="sm"
             onClick={handleExportPng}
             disabled={exporting}
-            className="gap-2 shadow-sm"
+            className="gap-1.5 h-8 text-xs"
           >
-            <Camera className="h-4 w-4" />
+            <Camera className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{exporting ? "Exporting…" : "Export PNG"}</span>
           </Button>
         </div>
       </div>
 
-      <div ref={dashboardRef} className="space-y-5 bg-background rounded-lg">
-        {/* KPI row */}
-        <div id="kpi-cards" className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">
-          {kpiCards.map((c) => (
-            <div key={c.label} className={`kpi-card bg-gradient-to-br ${KPI_GRADIENTS[c.label] || ""}`}>
-              <div className={`inline-flex items-center justify-center rounded-lg p-2 mb-2 ${KPI_ICON_BG[c.label] || "bg-muted text-muted-foreground"}`}>
-                <c.icon className="h-4 w-4" />
+      <div ref={dashboardRef} className="space-y-4 sm:space-y-5 bg-background rounded-xl">
+        {/* KPI grid — 2 cols mobile, 4 cols tablet, 8 cols desktop */}
+        <div id="kpi-cards" className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 xl:grid-cols-8 sm:gap-3">
+          {KPI_CONFIG.map((c) => {
+            const Icon = KPI_ICONS[c.label as keyof typeof KPI_ICONS];
+            return (
+              <div key={c.label} className={`kpi-card kpi-card--${c.accent}`}>
+                <div className={`inline-flex items-center justify-center rounded-lg p-1.5 sm:p-2 mb-1.5 sm:mb-2 ${c.iconBg}`}>
+                  <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                </div>
+                <p className="text-xl sm:text-2xl font-bold tracking-tight leading-none">{kpiValues[c.label]}</p>
+                <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1 font-medium leading-tight">{c.label}</p>
               </div>
-              <p className="text-2xl font-bold tracking-tight leading-none">{c.value}</p>
-              <p className="text-[11px] text-muted-foreground mt-1 font-medium">{c.label}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Drift Alerts */}
         <div id="drift-alerts">
           <div className="chart-card">
-            <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
-              <CardTitle className="text-sm font-semibold flex items-center justify-between">
+            <CardHeader className="px-3 py-2.5 sm:px-5 sm:py-3.5">
+              <CardTitle className="text-xs sm:text-sm font-semibold flex items-center justify-between">
                 <span className="flex items-center gap-2">
-                  <div className="inline-flex items-center justify-center rounded-lg bg-orange-500/15 text-orange-600 p-1.5">
-                    <AlertTriangle className="h-4 w-4" />
+                  <div className="inline-flex items-center justify-center rounded-lg bg-warning/15 text-warning p-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </div>
-                  Daily Lead Target & Alerts
+                  <span className="hidden sm:inline">Daily Lead Target & Alerts</span>
+                  <span className="sm:hidden">Target & Alerts</span>
                 </span>
-                <Button variant="ghost" size="sm" onClick={toggleAlerts} className="gap-1.5 text-xs h-7 rounded-full">
-                  {alertsEnabled ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+                <Button variant="ghost" size="sm" onClick={toggleAlerts} className="gap-1 text-[11px] h-7 rounded-full px-2">
+                  {alertsEnabled ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
                   {alertsEnabled ? "On" : "Off"}
                 </Button>
               </CardTitle>
             </CardHeader>
-            <CardContent className="px-4 pb-4 sm:px-6 sm:pb-5">
-              <div className="flex flex-wrap items-end gap-3 mb-3">
+            <CardContent className="px-3 pb-3 sm:px-5 sm:pb-4">
+              <div className="flex flex-wrap items-end gap-2 mb-3">
                 <div className="space-y-1">
-                  <Label className="text-xs font-medium">Daily target (leads/day)</Label>
+                  <Label className="text-[11px] font-medium">Daily target</Label>
                   <Input
                     type="number"
                     min={1}
-                    className="h-8 w-24 text-xs"
+                    className="h-8 w-20 text-xs"
                     value={targetInput}
                     onChange={(e) => setTargetInput(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSetTarget()}
                   />
                 </div>
-                <Button size="sm" onClick={handleSetTarget} className="h-8 text-xs rounded-lg">Set Target</Button>
+                <Button size="sm" onClick={handleSetTarget} className="h-8 text-xs rounded-lg">Set</Button>
               </div>
               {alertsEnabled && driftAlerts.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {driftAlerts.slice(0, 3).map((a) => (
-                    <Alert key={a.date} variant="destructive" className="py-2 rounded-lg">
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertTitle className="text-xs font-semibold">Below target on {a.date}</AlertTitle>
-                      <AlertDescription className="text-xs">
+                    <Alert key={a.date} variant="destructive" className="py-1.5 rounded-lg">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      <AlertTitle className="text-[11px] font-semibold">Below target on {a.date}</AlertTitle>
+                      <AlertDescription className="text-[11px]">
                         {a.actual} lead(s) vs target {a.target} — shortfall of {a.target - a.actual}
                       </AlertDescription>
                     </Alert>
                   ))}
                   {driftAlerts.length > 3 && (
-                    <p className="text-xs text-muted-foreground">+ {driftAlerts.length - 3} more day(s) below target</p>
+                    <p className="text-[11px] text-muted-foreground">+ {driftAlerts.length - 3} more day(s) below target</p>
                   )}
                 </div>
               )}
               {alertsEnabled && driftAlerts.length === 0 && (
-                <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2">
-                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <p className="text-xs text-emerald-700 font-medium">All days this week met the daily target</p>
+                <div className="flex items-center gap-2 rounded-lg bg-success/10 px-3 py-2">
+                  <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
+                  <p className="text-[11px] text-success font-medium">All days met the daily target ✓</p>
                 </div>
               )}
             </CardContent>
           </div>
         </div>
 
-        {/* Charts row 1 — stacks on mobile */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Charts row 1 — stacks fully on mobile */}
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           <div id="chart-status" className="chart-card">
-            <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
-              <CardTitle className="text-sm font-semibold">Status Distribution</CardTitle>
+            <CardHeader className="px-3 py-2.5 sm:px-5 sm:py-3.5">
+              <CardTitle className="text-xs sm:text-sm font-semibold">Status Distribution</CardTitle>
             </CardHeader>
-            <CardContent className="px-2 pb-3 sm:px-4">
-              <ResponsiveContainer width="100%" height={200}>
+            <CardContent className="px-1 pb-2 sm:px-3 sm:pb-3">
+              <ResponsiveContainer width="100%" height={180}>
                 <PieChart>
-                  <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={3} label={({ name, value }) => `${name}: ${value}`} labelLine={false} style={{ fontSize: 11 }}>
+                  <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={40} outerRadius={68} paddingAngle={3} label={({ name, value }) => `${name}: ${value}`} labelLine={false} style={{ fontSize: 10 }}>
                     {statusData.map((entry, i) => <Cell key={i} fill={entry.fill} stroke="none" />)}
                   </Pie>
-                  <Tooltip contentStyle={customTooltipStyle} />
+                  <Tooltip contentStyle={tooltipStyle} />
                 </PieChart>
               </ResponsiveContainer>
             </CardContent>
           </div>
 
           <div id="chart-priority" className="chart-card">
-            <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
-              <CardTitle className="text-sm font-semibold">Priority Breakdown</CardTitle>
+            <CardHeader className="px-3 py-2.5 sm:px-5 sm:py-3.5">
+              <CardTitle className="text-xs sm:text-sm font-semibold">Priority Breakdown</CardTitle>
             </CardHeader>
-            <CardContent className="px-2 pb-3 sm:px-4">
-              <ResponsiveContainer width="100%" height={200}>
+            <CardContent className="px-1 pb-2 sm:px-3 sm:pb-3">
+              <ResponsiveContainer width="100%" height={180}>
                 <PieChart>
-                  <Pie data={priorityData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={3} label={({ name, value }) => `${name}: ${value}`} labelLine={false} style={{ fontSize: 11 }}>
+                  <Pie data={priorityData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={40} outerRadius={68} paddingAngle={3} label={({ name, value }) => `${name}: ${value}`} labelLine={false} style={{ fontSize: 10 }}>
                     {priorityData.map((entry, i) => <Cell key={i} fill={entry.fill} stroke="none" />)}
                   </Pie>
-                  <Tooltip contentStyle={customTooltipStyle} />
+                  <Tooltip contentStyle={tooltipStyle} />
                 </PieChart>
               </ResponsiveContainer>
             </CardContent>
           </div>
 
           <div id="chart-ageing" className="chart-card sm:col-span-2 lg:col-span-1">
-            <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <div className="inline-flex items-center justify-center rounded-md bg-orange-500/15 text-orange-600 p-1">
-                  <AlertTriangle className="h-3.5 w-3.5" />
+            <CardHeader className="px-3 py-2.5 sm:px-5 sm:py-3.5">
+              <CardTitle className="text-xs sm:text-sm font-semibold flex items-center gap-2">
+                <div className="inline-flex items-center justify-center rounded-md bg-warning/15 text-warning p-1">
+                  <AlertTriangle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                 </div>
                 Lead Ageing
               </CardTitle>
             </CardHeader>
-            <CardContent className="px-2 pb-3 sm:px-4">
-              <ResponsiveContainer width="100%" height={200}>
+            <CardContent className="px-1 pb-2 sm:px-3 sm:pb-3">
+              <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={ageingData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={customTooltipStyle} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={28} />
+                  <Tooltip contentStyle={tooltipStyle} />
                   <Bar dataKey="value" name="Leads" radius={[6, 6, 0, 0]}>
                     {ageingData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
                   </Bar>
@@ -398,20 +402,20 @@ const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) =
           </div>
         </div>
 
-        {/* Charts row 2 */}
-        <div className="grid gap-4 lg:grid-cols-2">
+        {/* Charts row 2 — stacks on mobile */}
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
           <div id="chart-sales" className="chart-card">
-            <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
-              <CardTitle className="text-sm font-semibold">Sales Person Performance</CardTitle>
+            <CardHeader className="px-3 py-2.5 sm:px-5 sm:py-3.5">
+              <CardTitle className="text-xs sm:text-sm font-semibold">Sales Person Performance</CardTitle>
             </CardHeader>
-            <CardContent className="px-2 pb-3 sm:px-4">
-              <ResponsiveContainer width="100%" height={240}>
+            <CardContent className="px-1 pb-2 sm:px-3 sm:pb-3">
+              <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={salesData} layout="vertical" barGap={2}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={55} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={customTooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={50} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
                   <Bar dataKey="won" name="Won" fill={COLORS.won} stackId="a" radius={[0, 0, 0, 0]} />
                   <Bar dataKey="inProgress" name="In-progress" fill={COLORS.inProgress} stackId="a" />
                   <Bar dataKey="total" name="Total" fill={COLORS.cold} radius={[0, 4, 4, 0]} />
@@ -421,21 +425,21 @@ const SummaryDashboard = ({ placements, replacements }: SummaryDashboardProps) =
           </div>
 
           <div id="chart-trend" className="chart-card">
-            <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
-              <CardTitle className="text-sm font-semibold">Daily Lead Intake (14 Days)</CardTitle>
+            <CardHeader className="px-3 py-2.5 sm:px-5 sm:py-3.5">
+              <CardTitle className="text-xs sm:text-sm font-semibold">Daily Lead Intake (14 Days)</CardTitle>
             </CardHeader>
-            <CardContent className="px-2 pb-3 sm:px-4">
-              <ResponsiveContainer width="100%" height={240}>
+            <CardContent className="px-1 pb-2 sm:px-3 sm:pb-3">
+              <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={trendData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="date" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={customTooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <ReferenceLine y={dailyTarget} stroke={COLORS.target} strokeDasharray="6 3" label={{ value: `Target: ${dailyTarget}`, position: "right", fontSize: 10, fill: COLORS.target }} />
-                  <Line type="monotone" dataKey="total" name="Total" stroke={COLORS.totalLine} strokeWidth={2.5} dot={{ r: 3, strokeWidth: 0, fill: COLORS.totalLine }} activeDot={{ r: 5 }} />
-                  <Line type="monotone" dataKey="placements" name="Placements" stroke={COLORS.placement} strokeWidth={1.5} strokeDasharray="4 2" dot={{ r: 2 }} />
-                  <Line type="monotone" dataKey="replacements" name="Replacements" stroke={COLORS.replacement} strokeWidth={1.5} strokeDasharray="4 2" dot={{ r: 2 }} />
+                  <XAxis dataKey="date" tick={{ fontSize: 8 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={28} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                  <ReferenceLine y={dailyTarget} stroke={COLORS.target} strokeDasharray="6 3" label={{ value: `Target: ${dailyTarget}`, position: "right", fontSize: 9, fill: COLORS.target }} />
+                  <Line type="monotone" dataKey="total" name="Total" stroke={COLORS.totalLine} strokeWidth={2.5} dot={{ r: 2.5, strokeWidth: 0, fill: COLORS.totalLine }} activeDot={{ r: 4 }} />
+                  <Line type="monotone" dataKey="placements" name="Placements" stroke={COLORS.placement} strokeWidth={1.5} strokeDasharray="4 2" dot={{ r: 1.5 }} />
+                  <Line type="monotone" dataKey="replacements" name="Replacements" stroke={COLORS.replacement} strokeWidth={1.5} strokeDasharray="4 2" dot={{ r: 1.5 }} />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
