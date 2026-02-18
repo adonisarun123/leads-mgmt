@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import LeadForm from "@/components/LeadForm";
 import LeadTable from "@/components/LeadTable";
+import KpiCards from "@/components/KpiCards";
 import UserApprovalPanel from "@/components/UserApprovalPanel";
 import type { NewPlacement, Replacement } from "@/types/leads";
 import { LogOut, ShieldAlert } from "lucide-react";
@@ -148,11 +149,13 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="placements">
+            <KpiCards data={placements} label="Placements" />
             <LeadForm onSubmit={addPlacement} loading={loading} />
             <LeadTable data={placements} onUpdate={updatePlacement} userRole={userRole} />
           </TabsContent>
 
           <TabsContent value="replacements">
+            <KpiCards data={replacements} label="Replacements" />
             <LeadForm isReplacement onSubmit={addReplacement} loading={loading} />
             <LeadTable data={replacements} isReplacement onUpdate={updateReplacement} userRole={userRole} />
           </TabsContent>
