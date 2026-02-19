@@ -24,17 +24,17 @@ serve(async (req) => {
       });
     }
 
-    const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!, {
+    const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: claims, error: claimsErr } = await anonClient.auth.getClaims(authHeader.replace("Bearer ", ""));
-    if (claimsErr || !claims?.claims?.sub) {
+    const { data: { user: caller }, error: userErr } = await anonClient.auth.getUser();
+    if (userErr || !caller) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const callerId = claims.claims.sub as string;
+    const callerId = caller.id;
     const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", callerId).maybeSingle();
     if (roleData?.role !== "admin") {
       return new Response(JSON.stringify({ error: "Admin only" }), {
