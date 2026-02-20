@@ -46,7 +46,11 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, userRo
         if (filterSalesPerson !== ALL && row.sales_person !== filterSalesPerson) return false;
         return true;
       })
-      .sort((a, b) => (statusOrder[a.lead_status] ?? 99) - (statusOrder[b.lead_status] ?? 99));
+      .sort((a, b) => {
+        const statusDiff = (statusOrder[a.lead_status] ?? 99) - (statusOrder[b.lead_status] ?? 99);
+        if (statusDiff !== 0) return statusDiff;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
   }, [data, filterStatus, filterPriority, filterSalesPerson]);
 
   const canEdit = userRole === "admin";
