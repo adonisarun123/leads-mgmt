@@ -36,13 +36,17 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, userRo
 
   const hasFilters = filterStatus !== ALL || filterPriority !== ALL || filterSalesPerson !== ALL;
 
+  const statusOrder: Record<string, number> = { "In-progress": 0, "Won": 1, "Lost": 2 };
+
   const filteredData = useMemo(() => {
-    return data.filter((row) => {
-      if (filterStatus !== ALL && row.lead_status !== filterStatus) return false;
-      if (filterPriority !== ALL && row.lead_priority !== filterPriority) return false;
-      if (filterSalesPerson !== ALL && row.sales_person !== filterSalesPerson) return false;
-      return true;
-    });
+    return data
+      .filter((row) => {
+        if (filterStatus !== ALL && row.lead_status !== filterStatus) return false;
+        if (filterPriority !== ALL && row.lead_priority !== filterPriority) return false;
+        if (filterSalesPerson !== ALL && row.sales_person !== filterSalesPerson) return false;
+        return true;
+      })
+      .sort((a, b) => (statusOrder[a.lead_status] ?? 99) - (statusOrder[b.lead_status] ?? 99));
   }, [data, filterStatus, filterPriority, filterSalesPerson]);
 
   const canEdit = userRole === "admin";
