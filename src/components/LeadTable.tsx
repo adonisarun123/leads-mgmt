@@ -54,6 +54,7 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, userRo
   }, [data, filterStatus, filterPriority, filterSalesPerson]);
 
   const canEdit = userRole === "admin";
+  const canEditPriority = userRole === "admin" || userRole === "staff";
 
   const handleInlineChange = (id: string, field: string, value: string, label: string) => {
     setConfirm({ id, field, value, label });
@@ -292,7 +293,7 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, userRo
                 <TableCell>{row.language.join(", ")}</TableCell>
                 <TableCell>{row.salary}</TableCell>
                 <TableCell>
-                  {canEdit ? (
+                  {canEditPriority ? (
                     <Select
                       value={row.lead_priority}
                       onValueChange={(v) => handleInlineChange(row.id, "lead_priority", v, `Confirm lead priority as "${v}"?`)}
