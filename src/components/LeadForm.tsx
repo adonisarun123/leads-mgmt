@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import MultiSelect from "./MultiSelect";
 import ConfirmDialog from "./ConfirmDialog";
@@ -33,6 +34,7 @@ const LeadForm = ({ isReplacement = false, onSubmit, loading }: LeadFormProps) =
   const [status, setStatus] = useState<LeadStatus | "">("");
   const [salesPerson, setSalesPerson] = useState<SalesPerson | "">("");
   const [assignTo, setAssignTo] = useState("");
+  const [comments, setComments] = useState("");
   const [attempted, setAttempted] = useState(false);
 
   const [confirm, setConfirm] = useState<{ field: string; value: string; setter: (v: any) => void } | null>(null);
@@ -59,6 +61,7 @@ const LeadForm = ({ isReplacement = false, onSubmit, loading }: LeadFormProps) =
     setStatus("");
     setSalesPerson("");
     setAssignTo("");
+    setComments("");
     setAttempted(false);
   };
 
@@ -79,6 +82,7 @@ const LeadForm = ({ isReplacement = false, onSubmit, loading }: LeadFormProps) =
       sales_person: salesPerson,
     };
     if (isReplacement) data.assign_to = assignTo;
+    if (comments.trim()) data.comments = comments.trim();
     onSubmit(data);
     reset();
   };
@@ -198,6 +202,17 @@ const LeadForm = ({ isReplacement = false, onSubmit, loading }: LeadFormProps) =
                 <Input placeholder="Ops exec / Field officer" value={assignTo} onChange={(e) => setAssignTo(e.target.value)} className={fieldError(!!assignTo.trim())} />
               </div>
             )}
+
+            {/* Comments */}
+            <div className="space-y-1 md:col-span-2">
+              <Label>Comments</Label>
+              <Textarea
+                placeholder="Add any notes or comments about this lead..."
+                value={comments}
+                onChange={(e) => setComments(e.target.value)}
+                className="min-h-[60px] resize-none text-sm"
+              />
+            </div>
 
             <div className="flex items-end md:col-span-2 lg:col-span-1">
               <Button type="submit" disabled={!isValid || loading} className="w-full">
