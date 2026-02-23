@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { format, differenceInDays } from "date-fns";
-import { Download, ArrowRightLeft, Filter, X } from "lucide-react";
+import { Download, ArrowRightLeft, Filter, X, MessageSquare } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,7 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, onComm
   const [editingAssign, setEditingAssign] = useState<{ id: string; value: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkTransfer, setBulkTransfer] = useState<{ ids: string[]; value: string } | null>(null);
+  const [expandedCommentId, setExpandedCommentId] = useState<string | null>(null);
 
   // Filters
   const [filterStatus, setFilterStatus] = useState(ALL);
@@ -232,7 +233,9 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, onComm
               <TableHead>Priority</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Sales Person</TableHead>
-              <TableHead>Comments</TableHead>
+              <TableHead className="w-10 text-center">
+                <MessageSquare className="h-3.5 w-3.5 mx-auto" />
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -244,113 +247,134 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, onComm
               </TableRow>
             )}
             {filteredData.map((row) => (
-              <TableRow key={row.id} className={`hover:bg-muted/50 ${selectedIds.has(row.id) ? "bg-accent/30" : ""}`}>
-                {canEdit && (
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedIds.has(row.id)}
-                      onCheckedChange={() => toggleSelect(row.id)}
-                      aria-label={`Select lead ${row.id}`}
-                    />
-                  </TableCell>
-                )}
-                <TableCell className="whitespace-nowrap">{format(new Date(row.lead_in_date), "dd/MM/yyyy")}</TableCell>
-                <TableCell><AgeBadge leadInDate={row.lead_in_date} /></TableCell>
-                {isReplacement && (
-                  <TableCell>
-                    {canEdit ? (
-                      editingAssign?.id === row.id ? (
-                        <Input
-                          className="h-8 w-28 text-xs"
-                          value={editingAssign.value}
-                          onChange={(e) => setEditingAssign({ id: row.id, value: e.target.value })}
-                          onBlur={() => {
-                            if (editingAssign.value !== (row as Replacement).assign_to) {
-                              handleInlineChange(row.id, "assign_to", editingAssign.value, `Confirm assignment to "${editingAssign.value}"?`);
-                            }
-                            setEditingAssign(null);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                            if (e.key === "Escape") setEditingAssign(null);
-                          }}
-                          autoFocus
-                        />
+              <React.Fragment key={row.id}>
+                <TableRow className={`hover:bg-muted/50 ${selectedIds.has(row.id) ? "bg-accent/30" : ""}`}>
+                  {canEdit && (
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(row.id)}
+                        onCheckedChange={() => toggleSelect(row.id)}
+                        aria-label={`Select lead ${row.id}`}
+                      />
+                    </TableCell>
+                  )}
+                  <TableCell className="whitespace-nowrap">{format(new Date(row.lead_in_date), "dd/MM/yyyy")}</TableCell>
+                  <TableCell><AgeBadge leadInDate={row.lead_in_date} /></TableCell>
+                  {isReplacement && (
+                    <TableCell>
+                      {canEdit ? (
+                        editingAssign?.id === row.id ? (
+                          <Input
+                            className="h-8 w-28 text-xs"
+                            value={editingAssign.value}
+                            onChange={(e) => setEditingAssign({ id: row.id, value: e.target.value })}
+                            onBlur={() => {
+                              if (editingAssign.value !== (row as Replacement).assign_to) {
+                                handleInlineChange(row.id, "assign_to", editingAssign.value, `Confirm assignment to "${editingAssign.value}"?`);
+                              }
+                              setEditingAssign(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                              if (e.key === "Escape") setEditingAssign(null);
+                            }}
+                            autoFocus
+                          />
+                        ) : (
+                          <span
+                            className="cursor-pointer rounded px-1 py-0.5 text-xs hover:bg-accent"
+                            onClick={() => setEditingAssign({ id: row.id, value: (row as Replacement).assign_to })}
+                          >
+                            {(row as Replacement).assign_to}
+                          </span>
+                        )
                       ) : (
-                        <span
-                          className="cursor-pointer rounded px-1 py-0.5 text-xs hover:bg-accent"
-                          onClick={() => setEditingAssign({ id: row.id, value: (row as Replacement).assign_to })}
-                        >
-                          {(row as Replacement).assign_to}
-                        </span>
-                      )
+                        <span className="text-xs">{(row as Replacement).assign_to}</span>
+                      )}
+                    </TableCell>
+                  )}
+                  <TableCell>{row.area}</TableCell>
+                  <TableCell>{row.apartment}</TableCell>
+                  <TableCell>{row.job_type}</TableCell>
+                  <TableCell>{row.tasks.join(", ")}</TableCell>
+                  <TableCell>{row.language.join(", ")}</TableCell>
+                  <TableCell>{row.salary}</TableCell>
+                  <TableCell>
+                    {canEditPriority ? (
+                      <Select
+                        value={row.lead_priority}
+                        onValueChange={(v) => handleInlineChange(row.id, "lead_priority", v, `Confirm lead priority as "${v}"?`)}
+                      >
+                        <SelectTrigger className="h-8 w-24 border-none p-0">
+                          <PriorityBadge priority={row.lead_priority as LeadPriority} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PRIORITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     ) : (
-                      <span className="text-xs">{(row as Replacement).assign_to}</span>
+                      <PriorityBadge priority={row.lead_priority as LeadPriority} />
                     )}
                   </TableCell>
+                  <TableCell>
+                    {canEdit ? (
+                      <Select
+                        value={row.lead_status}
+                        onValueChange={(v) => handleInlineChange(row.id, "lead_status", v, `Are you sure you want to mark this lead as "${v}"?`)}
+                      >
+                        <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <span className="text-xs">{row.lead_status}</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {canEdit ? (
+                      <Select
+                        value={row.sales_person}
+                        onValueChange={(v) => handleInlineChange(row.id, "sales_person", v, `Confirm assignment to "${v}"?`)}
+                      >
+                        <SelectTrigger className="h-8 w-24 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {SALES_PERSONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <span className="text-xs">{row.sales_person}</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={`h-7 w-7 p-0 ${expandedCommentId === row.id ? "bg-accent" : ""}`}
+                      onClick={() => setExpandedCommentId(expandedCommentId === row.id ? null : row.id)}
+                    >
+                      <MessageSquare className={`h-3.5 w-3.5 ${(row as any).comments ? "text-primary" : "text-muted-foreground"}`} />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+                {expandedCommentId === row.id && (
+                  <TableRow className="bg-muted/30 hover:bg-muted/40">
+                    <TableCell colSpan={(isReplacement ? 13 : 12) + (canEdit ? 1 : 0)} className="py-3 px-4">
+                      <div className="max-w-lg">
+                        <p className="text-[11px] font-medium text-muted-foreground mb-1.5">
+                          Comment — {row.area}, {row.apartment}
+                        </p>
+                        <LeadCommentCell
+                          leadId={row.id}
+                          comment={(row as any).comments ?? null}
+                          canEdit={true}
+                          onSave={(id, comment) => onCommentSave?.(id, comment)}
+                        />
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 )}
-                <TableCell>{row.area}</TableCell>
-                <TableCell>{row.apartment}</TableCell>
-                <TableCell>{row.job_type}</TableCell>
-                <TableCell>{row.tasks.join(", ")}</TableCell>
-                <TableCell>{row.language.join(", ")}</TableCell>
-                <TableCell>{row.salary}</TableCell>
-                <TableCell>
-                  {canEditPriority ? (
-                    <Select
-                      value={row.lead_priority}
-                      onValueChange={(v) => handleInlineChange(row.id, "lead_priority", v, `Confirm lead priority as "${v}"?`)}
-                    >
-                      <SelectTrigger className="h-8 w-24 border-none p-0">
-                        <PriorityBadge priority={row.lead_priority as LeadPriority} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PRIORITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <PriorityBadge priority={row.lead_priority as LeadPriority} />
-                  )}
-                </TableCell>
-                <TableCell>
-                  {canEdit ? (
-                    <Select
-                      value={row.lead_status}
-                      onValueChange={(v) => handleInlineChange(row.id, "lead_status", v, `Are you sure you want to mark this lead as "${v}"?`)}
-                    >
-                      <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <span className="text-xs">{row.lead_status}</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {canEdit ? (
-                    <Select
-                      value={row.sales_person}
-                      onValueChange={(v) => handleInlineChange(row.id, "sales_person", v, `Confirm assignment to "${v}"?`)}
-                    >
-                      <SelectTrigger className="h-8 w-24 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {SALES_PERSONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <span className="text-xs">{row.sales_person}</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <LeadCommentCell
-                    leadId={row.id}
-                    comment={(row as any).comments ?? null}
-                    canEdit={canEdit || canEditPriority}
-                    onSave={(id, comment) => onCommentSave?.(id, comment)}
-                  />
-                </TableCell>
-              </TableRow>
+              </React.Fragment>
             ))}
           </TableBody>
         </Table>

@@ -26,7 +26,7 @@ const LeadCommentCell = ({ leadId, comment, canEdit, onSave }: LeadCommentCellPr
 
   if (editing) {
     return (
-      <div className="flex flex-col gap-1.5 min-w-[180px]">
+      <div className="flex flex-col gap-1.5">
         <Textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -34,11 +34,11 @@ const LeadCommentCell = ({ leadId, comment, canEdit, onSave }: LeadCommentCellPr
           placeholder="Add a comment..."
           autoFocus
         />
-        <div className="flex items-center gap-1">
-          <Button size="sm" variant="default" className="h-6 text-[10px] gap-1 px-2" onClick={handleSave}>
+        <div className="flex items-center gap-1.5">
+          <Button size="sm" variant="default" className="h-7 text-xs gap-1.5 px-3" onClick={handleSave}>
             <Save className="h-3 w-3" /> Save
           </Button>
-          <Button size="sm" variant="ghost" className="h-6 text-[10px] gap-1 px-2" onClick={handleCancel}>
+          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5 px-3" onClick={handleCancel}>
             <X className="h-3 w-3" /> Cancel
           </Button>
         </div>
@@ -47,25 +47,24 @@ const LeadCommentCell = ({ leadId, comment, canEdit, onSave }: LeadCommentCellPr
   }
 
   return (
-    <div className="flex items-start gap-1 min-w-[120px]">
+    <div className="flex items-start gap-2">
+      <MessageSquare className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
       {comment ? (
-        <span className="text-xs text-foreground whitespace-pre-wrap break-words max-w-[200px] line-clamp-2">
-          {comment}
-        </span>
+        <p className="text-xs text-foreground whitespace-pre-wrap break-words flex-1">{comment}</p>
       ) : (
-        <span className="text-xs text-muted-foreground italic">No comment</span>
+        <p className="text-xs text-muted-foreground italic flex-1">No comment yet</p>
       )}
       {canEdit && (
         <Button
           size="sm"
-          variant="ghost"
-          className="h-5 w-5 p-0 shrink-0"
+          variant="outline"
+          className="h-6 text-[10px] gap-1 px-2 shrink-0"
           onClick={() => {
             setDraft(comment ?? "");
             setEditing(true);
           }}
         >
-          <Pencil className="h-3 w-3" />
+          <Pencil className="h-3 w-3" /> Edit
         </Button>
       )}
     </div>
