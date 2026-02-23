@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 type LogAction = 
   | "create" | "update" | "delete"
   | "login" | "logout"
-  | "approve_user" | "revoke_user" | "change_role";
+  | "approve_user" | "revoke_user" | "change_role" | "reset_password";
 
 interface LogParams {
   action: LogAction;

@@ -6,7 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
 import { logActivity } from "@/lib/activity-logger";
-import { Check, X } from "lucide-react";
+import { Check, X, KeyRound } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 interface UserRole {
   id: string;
@@ -18,6 +20,32 @@ interface UserRole {
 const UserApprovalPanel = () => {
   const [users, setUsers] = useState<(UserRole & { email?: string })[]>([]);
   const [loading, setLoading] = useState(true);
+  const [resetTarget, setResetTarget] = useState<{ user_id: string; email: string } | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [resetting, setResetting] = useState(false);
+
+  const handleResetPassword = async () => {
+    if (!resetTarget || newPassword.length < 6) {
+      toast({ title: "Error", description: "Password must be at least 6 characters.", variant: "destructive" });
+      return;
+    }
+    setResetting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-user-password", {
+        body: { user_id: resetTarget.user_id, new_password: newPassword },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Success", description: `Password reset for ${resetTarget.email}.` });
+      await logActivity({ action: "reset_password", entityType: "user_roles", entityId: resetTarget.user_id });
+      setResetTarget(null);
+      setNewPassword("");
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setResetting(false);
+    }
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -89,6 +117,7 @@ const UserApprovalPanel = () => {
   if (loading) return <p className="text-sm text-muted-foreground py-4">Loading users...</p>;
 
   return (
+    <>
     <div className="rounded-lg border">
       <Table>
         <TableHeader>
@@ -124,7 +153,7 @@ const UserApprovalPanel = () => {
                   {u.approved ? "Approved" : "Pending"}
                 </Badge>
               </TableCell>
-              <TableCell>
+              <TableCell className="flex gap-1">
                 {u.approved ? (
                   <Button variant="outline" size="sm" onClick={() => handleRevoke(u.id)} className="gap-1 text-destructive">
                     <X className="h-3 w-3" /> Revoke
@@ -134,12 +163,38 @@ const UserApprovalPanel = () => {
                     <Check className="h-3 w-3" /> Approve
                   </Button>
                 )}
+                <Button variant="ghost" size="sm" onClick={() => setResetTarget({ user_id: u.user_id, email: u.email ?? u.user_id })} className="gap-1">
+                  <KeyRound className="h-3 w-3" /> Reset PW
+                </Button>
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
     </div>
+
+    <Dialog open={!!resetTarget} onOpenChange={(open) => { if (!open) { setResetTarget(null); setNewPassword(""); } }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Reset Password</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">Set a new password for <strong>{resetTarget?.email}</strong></p>
+        <Input
+          type="password"
+          placeholder="New password (min 6 chars)"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          minLength={6}
+        />
+        <DialogFooter>
+          <Button variant="outline" onClick={() => { setResetTarget(null); setNewPassword(""); }}>Cancel</Button>
+          <Button onClick={handleResetPassword} disabled={resetting || newPassword.length < 6}>
+            {resetting ? "Resetting..." : "Reset Password"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 };
 
