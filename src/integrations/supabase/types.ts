@@ -48,6 +48,7 @@ export type Database = {
         Row: {
           apartment: string
           area: string
+          comments: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -64,6 +65,7 @@ export type Database = {
         Insert: {
           apartment: string
           area: string
+          comments?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -80,6 +82,7 @@ export type Database = {
         Update: {
           apartment?: string
           area?: string
+          comments?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -136,6 +139,7 @@ export type Database = {
           apartment: string
           area: string
           assign_to: string
+          comments: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -153,6 +157,7 @@ export type Database = {
           apartment: string
           area: string
           assign_to: string
+          comments?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -170,6 +175,7 @@ export type Database = {
           apartment?: string
           area?: string
           assign_to?: string
+          comments?: string | null
           created_at?: string
           created_by?: string | null
           id?: string

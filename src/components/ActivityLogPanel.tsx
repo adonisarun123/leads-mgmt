@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Activity, LogIn, LogOut, Edit, Plus, Trash2, ShieldCheck, ShieldOff, UserCog } from "lucide-react";
+import { Activity, LogIn, LogOut, Edit, Plus, Trash2, ShieldCheck, ShieldOff, UserCog, KeyRound } from "lucide-react";
 
 interface ActivityLog {
   id: string;
@@ -26,6 +26,7 @@ const ACTION_ICONS: Record<string, typeof Activity> = {
   approve_user: ShieldCheck,
   revoke_user: ShieldOff,
   change_role: UserCog,
+  reset_password: KeyRound,
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -37,6 +38,7 @@ const ACTION_COLORS: Record<string, string> = {
   approve_user: "bg-success/15 text-success",
   revoke_user: "bg-destructive/15 text-destructive",
   change_role: "bg-warning/15 text-warning",
+  reset_password: "bg-warning/15 text-warning",
 };
 
 const ALL = "__all__";
@@ -45,9 +47,11 @@ const ActivityLogPanel = () => {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterAction, setFilterAction] = useState(ALL);
+  const [emailMap, setEmailMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchLogs();
+    fetchEmails();
   }, []);
 
   const fetchLogs = async () => {
@@ -59,6 +63,21 @@ const ActivityLogPanel = () => {
       .limit(200);
     setLogs((data as ActivityLog[]) ?? []);
     setLoading(false);
+  };
+
+  const fetchEmails = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("get-user-emails");
+      if (!error && data?.emails) {
+        setEmailMap(data.emails);
+      }
+    } catch {
+      // silently fail — will show truncated user_id
+    }
+  };
+
+  const getUserDisplay = (userId: string) => {
+    return emailMap[userId] || `${userId.slice(0, 8)}…`;
   };
 
   const filtered = filterAction === ALL ? logs : logs.filter((l) => l.action === filterAction);
@@ -88,6 +107,7 @@ const ActivityLogPanel = () => {
             <SelectItem value="approve_user">Approve</SelectItem>
             <SelectItem value="revoke_user">Revoke</SelectItem>
             <SelectItem value="change_role">Role Change</SelectItem>
+            <SelectItem value="reset_password">Password Reset</SelectItem>
           </SelectContent>
         </Select>
         <Badge variant="secondary" className="text-xs ml-auto">{filtered.length} entries</Badge>
@@ -113,7 +133,7 @@ const ActivityLogPanel = () => {
                     <span className="text-muted-foreground">{log.entity_type.replace("_", " ")}</span>
                   </p>
                   <p className="text-[11px] text-muted-foreground truncate">
-                    {log.user_id.slice(0, 8)}…
+                    <span className="font-medium text-foreground/70">{getUserDisplay(log.user_id)}</span>
                     {log.details && Object.keys(log.details).length > 0 && (
                       <> — {JSON.stringify(log.details).slice(0, 80)}</>
                     )}

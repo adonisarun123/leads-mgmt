@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import PriorityBadge from "./PriorityBadge";
 import AgeBadge from "./AgeBadge";
+import LeadCommentCell from "./LeadCommentCell";
 import ConfirmDialog from "./ConfirmDialog";
 import { PRIORITIES, STATUSES, SALES_PERSONS } from "@/types/leads";
 import type { NewPlacement, Replacement, LeadPriority } from "@/types/leads";
@@ -18,12 +19,13 @@ interface LeadTableProps {
   isReplacement?: boolean;
   onUpdate: (id: string, field: string, value: string) => void;
   onBulkUpdate?: (ids: string[], field: string, value: string) => void;
+  onCommentSave?: (id: string, comment: string) => void;
   userRole?: string;
 }
 
 const ALL = "__all__";
 
-const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, userRole }: LeadTableProps) => {
+const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, onCommentSave, userRole }: LeadTableProps) => {
   const [confirm, setConfirm] = useState<{ id: string; field: string; value: string; label: string } | null>(null);
   const [editingAssign, setEditingAssign] = useState<{ id: string; value: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -230,12 +232,13 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, userRo
               <TableHead>Priority</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Sales Person</TableHead>
+              <TableHead>Comments</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredData.length === 0 && (
               <TableRow>
-                <TableCell colSpan={(isReplacement ? 12 : 11) + (canEdit ? 1 : 0)} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={(isReplacement ? 13 : 12) + (canEdit ? 1 : 0)} className="text-center text-muted-foreground py-8">
                   {data.length === 0 ? "No leads yet. Add one above." : "No leads match the current filters."}
                 </TableCell>
               </TableRow>
@@ -338,6 +341,14 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, userRo
                   ) : (
                     <span className="text-xs">{row.sales_person}</span>
                   )}
+                </TableCell>
+                <TableCell>
+                  <LeadCommentCell
+                    leadId={row.id}
+                    comment={(row as any).comments ?? null}
+                    canEdit={canEdit || canEditPriority}
+                    onSave={(id, comment) => onCommentSave?.(id, comment)}
+                  />
                 </TableCell>
               </TableRow>
             ))}
