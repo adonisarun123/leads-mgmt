@@ -112,6 +112,22 @@ const Index = () => {
     fetchReplacements();
   };
 
+  const savePlacementComment = async (id: string, comment: string) => {
+    const { error } = await supabase.from("new_placements").update({ comments: comment }).eq("id", id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Saved", description: "Comment saved successfully" });
+    await logActivity({ action: "update", entityType: "new_placements", entityId: id, details: { field: "comments", value: comment } });
+    fetchPlacements();
+  };
+
+  const saveReplacementComment = async (id: string, comment: string) => {
+    const { error } = await supabase.from("replacements").update({ comments: comment }).eq("id", id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Saved", description: "Comment saved successfully" });
+    await logActivity({ action: "update", entityType: "replacements", entityId: id, details: { field: "comments", value: comment } });
+    fetchReplacements();
+  };
+
   const handleLogout = async () => {
     await logActivity({ action: "logout", entityType: "auth" });
     await supabase.auth.signOut();
@@ -209,7 +225,7 @@ const Index = () => {
                 <CsvImport userId={user.id} onSuccess={fetchPlacements} />
               </div>
             )}
-            <LeadTable data={placements} onUpdate={updatePlacement} userRole={userRole} />
+            <LeadTable data={placements} onUpdate={updatePlacement} onCommentSave={savePlacementComment} userRole={userRole} />
           </TabsContent>
 
           <TabsContent value="replacements">
@@ -217,7 +233,7 @@ const Index = () => {
             {!isFieldOfficer && (
               <LeadForm isReplacement onSubmit={addReplacement} loading={loading} />
             )}
-            <LeadTable data={replacements} isReplacement onUpdate={updateReplacement} userRole={userRole} />
+            <LeadTable data={replacements} isReplacement onUpdate={updateReplacement} onCommentSave={saveReplacementComment} userRole={userRole} />
           </TabsContent>
 
           {isAdmin && (
