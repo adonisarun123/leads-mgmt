@@ -58,6 +58,7 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, onComm
 
   const canEdit = userRole === "admin";
   const canEditPriority = userRole === "admin" || userRole === "staff";
+  const canEditStatus = userRole === "admin" || userRole === "manager";
 
   const handleInlineChange = (id: string, field: string, value: string, label: string) => {
     setConfirm({ id, field, value, label });
@@ -317,7 +318,7 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, onComm
                     )}
                   </TableCell>
                   <TableCell>
-                    {canEdit ? (
+                    {canEditStatus ? (
                       <Select
                         value={row.lead_status}
                         onValueChange={(v) => handleInlineChange(row.id, "lead_status", v, `Are you sure you want to mark this lead as "${v}"?`)}
