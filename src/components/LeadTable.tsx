@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import PriorityBadge from "./PriorityBadge";
+import StatusBadge from "./StatusBadge";
 import AgeBadge from "./AgeBadge";
 import LeadCommentCell from "./LeadCommentCell";
 import ConfirmDialog from "./ConfirmDialog";
 import { PRIORITIES, STATUSES, SALES_PERSONS } from "@/types/leads";
-import type { NewPlacement, Replacement, LeadPriority } from "@/types/leads";
+import type { NewPlacement, Replacement, LeadPriority, LeadStatus } from "@/types/leads";
 
 interface LeadTableProps {
   data: (NewPlacement | Replacement)[];
@@ -249,7 +250,7 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, onComm
             )}
             {filteredData.map((row) => (
               <React.Fragment key={row.id}>
-                <TableRow className={`hover:bg-muted/50 ${selectedIds.has(row.id) ? "bg-accent/30" : ""}`}>
+                <TableRow className={`hover:bg-muted/50 ${selectedIds.has(row.id) ? "bg-accent/30" : ""} ${row.lead_status === "Won" ? "line-through opacity-60" : ""}`}>
                   {canEdit && (
                     <TableCell>
                       <Checkbox
@@ -323,13 +324,15 @@ const LeadTable = ({ data, isReplacement = false, onUpdate, onBulkUpdate, onComm
                         value={row.lead_status}
                         onValueChange={(v) => handleInlineChange(row.id, "lead_status", v, `Are you sure you want to mark this lead as "${v}"?`)}
                       >
-                        <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-8 w-28 border-none p-0">
+                          <StatusBadge status={row.lead_status as LeadStatus} />
+                        </SelectTrigger>
                         <SelectContent>
                           {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     ) : (
-                      <span className="text-xs">{row.lead_status}</span>
+                      <StatusBadge status={row.lead_status as LeadStatus} />
                     )}
                   </TableCell>
                   <TableCell>
