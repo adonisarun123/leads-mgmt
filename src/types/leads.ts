@@ -1,7 +1,7 @@
 export type JobType = "Live-in" | "Full-time" | "Part-time";
 export type LeadPriority = "Hot" | "Warm" | "Cold";
 export type LeadStatus = "In-progress" | "Won" | "Lost";
-export type SalesPerson = "Laxmi" | "Anjum" | "Saritha" | "Rashmi";
+export type SalesPerson = "Laxmi" | "Anjum" | "Saritha" | "Rashmi" | "Ashma";
 
 export const JOB_TYPES: JobType[] = ["Live-in", "Full-time", "Part-time"];
 export const PRIORITIES: LeadPriority[] = ["Hot", "Warm", "Cold"];
